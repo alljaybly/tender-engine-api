@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tender Intelligence Platform</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+            background: #f4f4f4;
+        }
+
+        .container {
+            max-width: 700px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        pre {
+            background: #222;
+            color: #0f0;
+            padding: 15px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>Tender Intelligence Platform</h1>
+
+    <h3>Upload Tender PDF</h3>
+
+    <input type="file" id="pdfFile">
+
+    <h3>Company Profile JSON</h3>
+
+    <textarea id="companyProfile">
+{
+  "keywords": ["construction", "roads", "infrastructure"],
+  "min_years_experience": 5
+}
+    </textarea>
+
+    <br>
+
+    <button onclick="uploadTender()">Analyze Tender</button>
+
+    <h3>Response</h3>
+
+    <pre id="responseBox"></pre>
+
+</div>
+
+<script>
+async function uploadTender() {
+
+    const fileInput = document.getElementById("pdfFile");
+    const companyProfile = document.getElementById("companyProfile").value;
+    const responseBox = document.getElementById("responseBox");
+
+    if (!fileInput.files.length) {
+        alert("Please select a PDF file.");
+        return;
+    }
+
+    const formData = new FormData();
+
+    formData.append("file", fileInput.files[0]);
+    formData.append("company_profile", companyProfile);
+
+    try {
+
+        const response = await fetch("/api/upload", {
+            method: "POST",
+            headers: {
+                "x-api-key": "test_key_123"
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        responseBox.textContent = JSON.stringify(data, null, 2);
+
+    } catch (error) {
+
+        responseBox.textContent = error;
+
+    }
+}
+</script>
+
+</body>
+</html>

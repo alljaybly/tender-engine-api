@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+.chromedriver/
+downloads/
+*.log
+.idea/
+.vscode/
+.vscode
