@@ -9,6 +9,7 @@ from .analyze import router as analyze_router
 from .upload import router as upload_router
 from .scrape import router as scrape_router
 from .download_zip import router as download_zip_router
+from .pricing import router as pricing_router
 
 router = APIRouter()
 
@@ -21,3 +22,4 @@ router.include_router(analyze_router)
 router.include_router(upload_router)
 router.include_router(scrape_router)
 router.include_router(download_zip_router)
+router.include_router(pricing_router)
