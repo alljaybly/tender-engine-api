@@ -29,7 +29,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('tender-engine-api')
 
 # -------------------------------
-# OPENAPI SECURITY
+# DATABASE INIT
+# -------------------------------
+from .services.database import init_db
+
+@app.on_event("startup")
+async def on_startup():
+    init_db()
+    logger.info("[DB] Database initialized on startup")
+
+# -------------------------------
+# OPENAPI SECURITY (supports both ApiKey and Bearer JWT)
 # -------------------------------
 original_openapi = app.openapi
 
@@ -41,14 +51,27 @@ def custom_openapi():
         "ApiKeyAuth": {
             "type": "apiKey",
             "in": "header",
-            "name": "x-api-key"
+            "name": "x-api-key",
+            "description": "Legacy API key authentication (deprecated, use Bearer JWT)"
+        },
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "JWT Bearer token from /api/auth/login"
         }
     }
-    openapi_schema["security"] = [{"ApiKeyAuth": []}]
+    openapi_schema["security"] = [{"BearerAuth": []}, {"ApiKeyAuth": []}]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+# -------------------------------
+# JWT AUTH HELPERS (for middleware)
+# -------------------------------
+from .services.auth import decode_access_token
+from .services.database import get_user_by_id_sync, get_api_key_sync
 
 # -------------------------------
 # ERROR HANDLERS
@@ -81,14 +104,14 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     return error_response('internal_server_error', 'Internal server error', 500)
 
 # -------------------------------
-# AUTH MIDDLEWARE
+# AUTH MIDDLEWARE (dual auth: x-api-key OR Bearer JWT)
 # -------------------------------
 @app.middleware('http')
 async def require_api_key(request: Request, call_next):
 
     path = request.url.path
 
-    # ✅ PUBLIC ROUTES (NO API KEY)
+    # ✅ PUBLIC ROUTES (NO AUTH REQUIRED)
     if (
         path == "/" or
         path.startswith("/static") or
@@ -106,34 +129,65 @@ async def require_api_key(request: Request, call_next):
         request.state.user = {"user_id": "dev", "plan": "unlimited"}
         return await call_next(request)
 
-    # 🔐 NORMAL SECURITY
-    if not api_key:
-        return error_response('unauthorized', 'API key required', 401)
+    # 🔐 ATTEMPT 1: Bearer JWT authentication
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+        payload = decode_access_token(token)
+        if payload is not None:
+            user_id = payload.get("sub")
+            if user_id is not None:
+                user = get_user_by_id_sync(user_id)
+                if user and user.get("is_active"):
+                    request.state.user = {
+                        "user_id": user["email"],
+                        "id": user["id"],
+                        "email": user["email"],
+                        "plan": user.get("plan", "free"),
+                        "full_name": user.get("full_name", ""),
+                        "auth_method": "jwt",
+                    }
+                    return await call_next(request)
 
-    user = get_user_by_api_key(api_key)
-    if not user:
-        return error_response('unauthorized', 'Invalid API key', 401)
+        # Token was provided but invalid — reject immediately
+        return error_response('unauthorized', 'Invalid or expired Bearer token', 401)
 
-    reservation = reserve_request(api_key, user.get('plan'))
-    if not reservation.get('allowed'):
-        code = reservation.get('code', 'request_rejected')
-        status_code = 429 if code == 'rate_limit_exceeded' else 403
+    # 🔐 ATTEMPT 2: Legacy API key authentication
+    if api_key:
+        user = get_user_by_api_key(api_key)
+        if not user:
+            return error_response('unauthorized', 'Invalid API key', 401)
 
-        if code == 'plan_expired':
-            message = 'Plan expired'
-        elif code == 'usage_limit_exceeded':
-            message = 'Usage limit exceeded'
-        elif code == 'rate_limit_exceeded':
-            message = 'Too many requests'
-        else:
-            message = 'Plan invalid'
+        reservation = reserve_request(api_key, user.get('plan'))
+        if not reservation.get('allowed'):
+            code = reservation.get('code', 'request_rejected')
+            status_code = 429 if code == 'rate_limit_exceeded' else 403
 
-        return error_response(code, message, status_code)
+            if code == 'plan_expired':
+                message = 'Plan expired'
+            elif code == 'usage_limit_exceeded':
+                message = 'Usage limit exceeded'
+            elif code == 'rate_limit_exceeded':
+                message = 'Too many requests'
+            else:
+                message = 'Plan invalid'
 
-    user['usage'] = reservation.get('usage', {})
-    request.state.user = user
+            return error_response(code, message, status_code)
 
-    return await call_next(request)
+        user['usage'] = reservation.get('usage', {})
+        user['auth_method'] = 'api_key'
+        request.state.user = user
+        return await call_next(request)
+
+    # 🔐 NO AUTHENTICATION PROVIDED
+    # Auth routes (register/login) are public -> handled below as they start with /api/auth
+    if path.startswith("/api/auth"):
+        # Allow auth endpoints to pass without authentication
+        # (they handle their own auth via the login/register payloads)
+        request.state.user = None
+        return await call_next(request)
+
+    return error_response('unauthorized', 'Authentication required. Provide x-api-key header or Bearer token.', 401)
 
 # -------------------------------
 # API ROUTES
