@@ -56,6 +56,80 @@ def init_db():
             )
         """)
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS processing_jobs (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id          TEXT UNIQUE NOT NULL,
+                user_id         TEXT,
+                filename        TEXT,
+                original_name   TEXT,
+                status          TEXT DEFAULT 'queued',
+                progress        TEXT DEFAULT 'pending',
+                created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                result_json     TEXT,
+                error_message   TEXT
+            )
+        """)
+
+        # New hardened schema
+        cursor.executescript("""
+            CREATE TABLE IF NOT EXISTS tenders (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id            TEXT UNIQUE NOT NULL,
+                user_id           TEXT,
+                filename          TEXT,
+                original_filename TEXT,
+                file_hash         TEXT DEFAULT '',
+                mime_type         TEXT DEFAULT '',
+                file_size         INTEGER DEFAULT 0,
+                status            TEXT DEFAULT 'queued',
+                pipeline_version  TEXT DEFAULT 'v1',
+                created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at      TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_tenders_job_id ON tenders(job_id);
+            CREATE INDEX IF NOT EXISTS idx_tenders_user_id ON tenders(user_id);
+            CREATE INDEX IF NOT EXISTS idx_tenders_status ON tenders(status);
+            CREATE INDEX IF NOT EXISTS idx_tenders_file_hash ON tenders(file_hash);
+
+            CREATE TABLE IF NOT EXISTS tender_results (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                tender_id         TEXT NOT NULL,
+                raw_text          TEXT,
+                sector            TEXT,
+                sector_confidence TEXT,
+                duration_months   INTEGER,
+                locations_json    TEXT,
+                workforce_json    TEXT,
+                schedule_json     TEXT,
+                boq_json          TEXT,
+                boq_confidence    TEXT,
+                pricing_json      TEXT,
+                pricing_mode      TEXT DEFAULT 'estimated',
+                warnings_json     TEXT,
+                extraction_method TEXT,
+                pipeline_version  TEXT DEFAULT 'v1',
+                created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (tender_id) REFERENCES tenders(job_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_tender_results_tender_id ON tender_results(tender_id);
+
+            CREATE TABLE IF NOT EXISTS processing_events (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                tender_id   TEXT NOT NULL,
+                stage       TEXT NOT NULL,
+                status      TEXT DEFAULT 'pending',
+                details     TEXT,
+                duration_ms INTEGER,
+                created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (tender_id) REFERENCES tenders(job_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_processing_events_tender_id ON processing_events(tender_id);
+            CREATE INDEX IF NOT EXISTS idx_processing_events_stage ON processing_events(stage);
+        """)
+
         conn.commit()
         logger.info("[DB] SQLite database initialized at %s", DB_PATH)
     except Exception as e:

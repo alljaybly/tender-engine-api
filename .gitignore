@@ -9,3 +9,5 @@ downloads/
 .idea/
 .vscode/
 .vscode
+tender_engine.db
+temp_downloads/

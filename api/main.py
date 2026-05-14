@@ -47,6 +47,7 @@ def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
     openapi_schema = original_openapi()
+    registered_schemes = {"ApiKeyAuth", "BearerAuth"}
     openapi_schema["components"]["securitySchemes"] = {
         "ApiKeyAuth": {
             "type": "apiKey",
@@ -62,6 +63,20 @@ def custom_openapi():
         }
     }
     openapi_schema["security"] = [{"BearerAuth": []}, {"ApiKeyAuth": []}]
+    # Remap operation-level security: FastAPI's original_openapi() auto-generates
+    # per-operation security references (e.g. "HTTPBearer") from Depends(HTTPBearer).
+    # After we replace securitySchemes above, those internal references become
+    # dangling.  Replace any unrecognised scheme with BearerAuth so Swagger
+    # attaches the Authorize token.
+    for path, methods in openapi_schema.get("paths", {}).items():
+        for method in methods.values():
+            op_security = method.get("security")
+            if op_security is not None:
+                for sec_req in op_security:
+                    for scheme_name in list(sec_req.keys()):
+                        if scheme_name not in registered_schemes:
+                            # Remap auto-generated scheme name to BearerAuth
+                            sec_req["BearerAuth"] = sec_req.pop(scheme_name)
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
