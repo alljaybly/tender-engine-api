@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .process import router as process_router
+from .process import router as process_router, process_pipeline_router
 from .status import router as status_router
 from .health import router as health_router
 from .payments import router as payments_router
@@ -11,6 +11,7 @@ from .scrape import router as scrape_router
 from .download_zip import router as download_zip_router
 from .pricing import router as pricing_router
 from .auth import router as auth_router
+from .boq import router as boq_router
 
 router = APIRouter()
 
@@ -25,3 +26,5 @@ router.include_router(scrape_router)
 router.include_router(download_zip_router)
 router.include_router(pricing_router)
 router.include_router(auth_router)
+router.include_router(boq_router)
+router.include_router(process_pipeline_router)
