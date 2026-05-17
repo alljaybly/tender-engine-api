@@ -82,6 +82,18 @@ def init_db():
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Marketing leads table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS marketing_leads (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                name            TEXT NOT NULL,
+                email           TEXT UNIQUE NOT NULL,
+                company         TEXT DEFAULT '',
+                role            TEXT DEFAULT '',
+                created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # New hardened schema
         cursor.executescript("""
             CREATE TABLE IF NOT EXISTS tenders (
