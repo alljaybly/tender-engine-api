@@ -152,7 +152,8 @@ async def require_api_key(request: Request, call_next):
         path.startswith("/redoc") or
         path.startswith("/openapi") or
         path.startswith("/health") or
-        path.startswith("/favicon")
+        path.startswith("/favicon") or
+        path == "/api/leads"
     ):
         return await call_next(request)
 

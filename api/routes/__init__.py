@@ -12,6 +12,7 @@ from .download_zip import router as download_zip_router
 from .pricing import router as pricing_router
 from .auth import router as auth_router
 from .boq import router as boq_router
+from .leads import router as leads_router
 
 router = APIRouter()
 
@@ -28,3 +29,4 @@ router.include_router(pricing_router)
 router.include_router(auth_router)
 router.include_router(boq_router)
 router.include_router(process_pipeline_router)
+router.include_router(leads_router)
