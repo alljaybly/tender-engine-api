@@ -126,3 +126,83 @@ class ProcessUploadResponse(BaseModel):
     status: str = Field("queued", description="Initial status")
     filename: str = Field(..., description="Original filename")
     message: str = Field("File uploaded and queued for processing", description="User-friendly message")
+
+
+class RetryRequest(BaseModel):
+    """Request body for POST /api/process/retry/{job_id}."""
+    stages: List[str] = Field(
+        ...,
+        description=(
+            "List of stage names to retry. "
+            "Valid stages: metadata_extraction, text_extraction, "
+            "entity_extraction, boq_analysis, pricing_calculation. "
+            "Dependencies are resolved automatically."
+        ),
+        examples=[["pricing_calculation"], ["text_extraction", "boq_analysis"]],
+    )
+
+
+class RetryResponse(BaseModel):
+    """Response from a retry operation."""
+    job_id: str = Field(..., description="The job ID that was retried")
+    status: str = Field(..., description="Final status after retry: completed, partial_success, or failed")
+    retry_count: int = Field(default=0, description="Total retry count for this job")
+    retried_stages: List[str] = Field(default_factory=list, description="Stages that were re-executed")
+    last_retry_at: Optional[str] = Field(default=None, description="ISO timestamp of last retry")
+    stage_failures: List[Dict[str, Any]] = Field(default_factory=list, description="Structured failure metadata for failed stages")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "job_id": "a1b2c3d4...",
+                "status": "partial_success",
+                "retry_count": 1,
+                "retried_stages": ["text_extraction", "entity_extraction", "pricing_calculation"],
+                "last_retry_at": "2026-05-16T12:00:00",
+                "stage_failures": [
+                    {
+                        "stage": "pricing_calculation",
+                        "reason": "missing_sector",
+                        "recoverable": True,
+                        "retryable": True,
+                        "description": "Pricing could not be calculated."
+                    }
+                ],
+            }
+        }
+
+
+class ProcessingHistoryItem(BaseModel):
+    """
+    Lightweight history summary for a single processing job.
+    
+    Returned by GET /api/process/history.
+    Designed to survive partial/missing data — all fields are optional
+    with safe defaults so the endpoint never crashes on corrupt records.
+    """
+    job_id: str = Field(..., description="Unique job identifier")
+    filename: Optional[str] = Field(default=None, description="Original uploaded filename")
+    status: str = Field("unknown", description="Job status")
+    created_at: Optional[str] = Field(default=None, description="ISO timestamp of creation")
+    updated_at: Optional[str] = Field(default=None, description="ISO timestamp of last update")
+    sector: Optional[str] = Field(default=None, description="Detected sector from processed result")
+    confidence: Optional[str] = Field(default=None, description="Extraction confidence level")
+    warnings_count: int = Field(default=0, description="Number of warnings from processing")
+    has_pricing: bool = Field(default=False, description="Whether pricing data is available")
+    error_message: Optional[str] = Field(default=None, description="Error message if job failed")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "job_id": "a1b2c3d4...",
+                "filename": "tender_doc.pdf",
+                "status": "completed",
+                "created_at": "2026-05-13T12:00:00",
+                "updated_at": "2026-05-13T12:02:30",
+                "sector": "cleaning",
+                "confidence": "High",
+                "warnings_count": 0,
+                "has_pricing": True,
+                "error_message": None,
+            }
+        }

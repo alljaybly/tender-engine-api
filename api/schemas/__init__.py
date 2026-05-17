@@ -5,6 +5,9 @@ from .process import (
     ProcessingResult,
     ProcessingJobCreate,
     ExtractedBOQItem,
+    ProcessingHistoryItem,
+    RetryRequest,
+    RetryResponse,
 )
 
 __all__ = [
@@ -16,4 +19,7 @@ __all__ = [
     "ProcessingResult",
     "ProcessingJobCreate",
     "ExtractedBOQItem",
+    "ProcessingHistoryItem",
+    "RetryRequest",
+    "RetryResponse",
 ]
