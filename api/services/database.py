@@ -72,6 +72,16 @@ def init_db():
             )
         """)
 
+        # Add retry tracking columns to processing_jobs if they don't exist
+        try:
+            cursor.execute("ALTER TABLE processing_jobs ADD COLUMN retry_count INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        try:
+            cursor.execute("ALTER TABLE processing_jobs ADD COLUMN retry_data_json TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # New hardened schema
         cursor.executescript("""
             CREATE TABLE IF NOT EXISTS tenders (

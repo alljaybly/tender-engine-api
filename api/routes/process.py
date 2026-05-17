@@ -2,10 +2,12 @@
 Tender upload and processing pipeline routes.
 
 Routes:
-  POST /api/process/upload       — Upload a tender document and start async processing
-  POST /api/process-tender       — Legacy endpoint (preserved)
-  GET  /api/process/status/{id}  — Check processing job status
-  GET  /api/process/result/{id}  — Retrieve processing job result
+  POST /api/process/upload        — Upload a tender document and start async processing
+  POST /api/process-tender        — Legacy endpoint (preserved)
+  GET  /api/process/status/{id}   — Check processing job status
+  GET  /api/process/result/{id}   — Retrieve processing job result
+  GET  /api/process/history       — Get user's processing history
+  POST /api/process/retry/{job_id} — Retry failed pipeline stages
 """
 import asyncio
 import json
@@ -18,7 +20,14 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 
-from ..schemas.process import ProcessUploadResponse, ProcessingJobStatus, ProcessingResult
+from ..schemas.process import (
+    ProcessUploadResponse,
+    ProcessingJobStatus,
+    ProcessingResult,
+    ProcessingHistoryItem,
+    RetryRequest,
+    RetryResponse,
+)
 from ..routes.auth import get_current_user
 from ..services.database import get_db, close_db
 from ..services.pipeline import (
@@ -29,6 +38,8 @@ from ..services.job_store import create_job, update_job
 from ..services.worker import process_job
 from ..services.user_store import record_job_failure
 from ..utils import error_response
+from ..services.export_service import generate_export
+from ..services.pdf_report_service import generate_pdf_report
 
 logger = logging.getLogger(__name__)
 
@@ -483,6 +494,249 @@ async def process_status(
 
 
 @process_pipeline_router.get(
+    "/export/pdf/{job_id}",
+    summary="Export processing result as PDF report",
+    description=(
+        "Generate a professional client-ready PDF report from a processing result. "
+        "Includes cover page, executive summary, key insights, pricing breakdown, "
+        "workforce analysis, and risks/warnings.  All confidence levels, "
+        "warnings, and data gaps are honestly presented."
+    ),
+)
+async def process_export_pdf(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Export processing result as a professional PDF report.
+
+    Sections:
+      1. Cover Page — Tender filename, job ID, sector, location, date
+      2. Executive Summary — Total value, duration, workforce, confidence
+      3. Key Insights — BOQ count, categories, OCR usage, missing data
+      4. Pricing Summary — Full pricing breakdown with method & assumptions
+      5. Workforce Summary — Workers by category with confidence
+      6. Risks & Warnings — Warnings, failed stages, retry info
+
+    Returns a streaming .pdf file download.
+    Returns 404 if the job doesn't exist or has no result data.
+    Returns 400 if the job is still processing.
+    """
+    from fastapi.responses import StreamingResponse
+
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT job_id, status, filename, original_name, result_json, "
+            "retry_count, retry_data_json, error_message "
+            "FROM processing_jobs WHERE job_id = ?",
+            (job_id,),
+        )
+        row = await cursor.fetchone()
+
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Job '{job_id}' not found.",
+            )
+
+        job = dict(row)
+        job_status = job["status"]
+
+        # ── Blocked: still processing ──────────────────────────────
+        if job_status in ("queued", "processing"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot export PDF while job is {job_status}. "
+                       f"Wait for processing to complete.",
+            )
+
+        # ── Load result data ───────────────────────────────────────
+        result_json = job.get("result_json")
+        if not result_json:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No result data available for job '{job_id}'.",
+            )
+
+        try:
+            result_dict = json.loads(result_json)
+        except (json.JSONDecodeError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Corrupt result data: {e}",
+            )
+
+        # ── Inject retry metadata into result dict for report ──────
+        retry_count = job.get("retry_count") or 0
+        retry_data_json = job.get("retry_data_json")
+        retry_metadata = {}
+        if retry_data_json:
+            try:
+                retry_metadata = json.loads(retry_data_json)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        retry_metadata["retry_count"] = retry_count
+        result_dict["retry_metadata"] = retry_metadata
+
+        # ── Generate PDF report ─────────────────────────────────────
+        try:
+            output = generate_pdf_report(job_id, result_dict)
+        except Exception as e:
+            logger.exception("[EXPORT] Failed to generate PDF for job %s", job_id)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to generate PDF report: {e}",
+            )
+
+        # ── Determine filename ─────────────────────────────────────
+        filename = job.get("original_name") or job.get("filename") or job_id
+        base_name = os.path.splitext(filename)[0]
+        safe_base = re.sub(r"[^a-zA-Z0-9\-_]", "_", base_name)[:80]
+        export_filename = f"{safe_base}_tender_report.pdf"
+
+        logger.info(
+            "[EXPORT] PDF report generated for job %s — filename=%s",
+            job_id, export_filename,
+        )
+
+        return StreamingResponse(
+            output,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{export_filename}"',
+                "Content-Type": "application/pdf",
+            },
+        )
+
+    finally:
+        await close_db(db)
+
+
+@process_pipeline_router.get(
+    "/history",
+    response_model=list[ProcessingHistoryItem],
+    summary="Get processing history",
+    description=(
+        "Return all processing jobs for the current authenticated user, "
+        "ordered newest first.  Enriches each job with lightweight summary "
+        "data (sector, confidence, warnings count, pricing availability) "
+        "from the tender_results table.  Gracefully handles missing or "
+        "partial records — never crashes."
+    ),
+)
+async def process_history(
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Retrieve processing history for the current user.
+
+    Returns a list of ProcessingHistoryItem objects sorted by
+    created_at descending (newest first).  Each item includes:
+      - job_id, filename, status
+      - created_at, updated_at
+      - sector, confidence (from tender_results if available)
+      - warnings_count, has_pricing (enriched from results)
+
+    Resilience:
+      - Never crashes on partial/corrupt records
+      - Missing fields get safe defaults
+      - Statuses preserved honestly (partial_success, failed, etc.)
+    """
+    user_email = current_user.get("email", current_user.get("user_id", ""))
+    start_time = __import__("time").time()
+
+    db = await get_db()
+    try:
+        # Query processing_jobs for history, left join with tender_results for enrichment
+        cursor = await db.execute(
+            """SELECT
+                pj.job_id,
+                pj.filename,
+                pj.original_name,
+                pj.status,
+                pj.created_at,
+                pj.updated_at,
+                pj.error_message,
+                tr.sector,
+                tr.sector_confidence,
+                tr.warnings_json,
+                tr.pricing_json
+               FROM processing_jobs pj
+               LEFT JOIN tender_results tr ON tr.tender_id = pj.job_id
+               WHERE pj.user_id = ?
+               ORDER BY pj.created_at DESC""",
+            (user_email,),
+        )
+        rows = await cursor.fetchall()
+
+        history_items: list[ProcessingHistoryItem] = []
+        for row in rows:
+            job = dict(row)
+            try:
+                # Parse warnings count from warnings_json
+                warnings_count = 0
+                warnings_raw = job.get("warnings_json")
+                if warnings_raw:
+                    try:
+                        parsed_warnings = json.loads(warnings_raw)
+                        if isinstance(parsed_warnings, list):
+                            warnings_count = len(parsed_warnings)
+                        elif isinstance(parsed_warnings, dict):
+                            warnings_count = len(parsed_warnings)
+                    except (json.JSONDecodeError, TypeError):
+                        # Gracefully handle corrupt warning data
+                        logger.warning("[HISTORY] Job %s has unparseable warnings_json", job.get("job_id"))
+
+                # Determine if pricing data exists
+                has_pricing = False
+                pricing_raw = job.get("pricing_json")
+                if pricing_raw:
+                    try:
+                        parsed_pricing = json.loads(pricing_raw)
+                        has_pricing = parsed_pricing is not None and bool(parsed_pricing)
+                    except (json.JSONDecodeError, TypeError):
+                        # Gracefully handle corrupt pricing data
+                        logger.warning("[HISTORY] Job %s has unparseable pricing_json", job.get("job_id"))
+
+                # Log missing sector as a debug hint
+                sector = job.get("sector")
+                if not sector:
+                    logger.debug("[HISTORY] Job %s missing sector field", job.get("job_id"))
+
+                # Use original_name if available, fallback to filename
+                filename = job.get("original_name") or job.get("filename")
+
+                item = ProcessingHistoryItem(
+                    job_id=job.get("job_id", ""),
+                    filename=filename,
+                    status=job.get("status", "unknown"),
+                    created_at=job.get("created_at"),
+                    updated_at=job.get("updated_at"),
+                    sector=sector,
+                    confidence=job.get("sector_confidence"),
+                    warnings_count=warnings_count,
+                    has_pricing=has_pricing,
+                    error_message=job.get("error_message"),
+                )
+                history_items.append(item)
+            except Exception as e:
+                # Never crash on a single corrupt record — log and skip it
+                logger.warning("[HISTORY] Skipping corrupt job record %s: %s",
+                               job.get("job_id", "unknown"), e)
+                continue
+
+        elapsed_ms = int((__import__("time").time() - start_time) * 1000)
+        logger.info("[HISTORY] Returning %d jobs for user %s in %d ms",
+                    len(history_items), user_email, elapsed_ms)
+
+        return history_items
+
+    finally:
+        await close_db(db)
+
+
+@process_pipeline_router.get(
     "/result/{job_id}",
     response_model=ProcessingResult,
     summary="Get processing job result",
@@ -635,6 +889,226 @@ async def process_result(
                     result_dict.get("failed_stages"))
 
         return ProcessingResult(**result_dict)
+
+    finally:
+        await close_db(db)
+
+
+@process_pipeline_router.post(
+    "/retry/{job_id}",
+    response_model=RetryResponse,
+    summary="Retry failed pipeline stages",
+    description=(
+        "Retry specific recoverable pipeline stages for a job WITHOUT "
+        "requiring full document re-upload.  Reuses the existing uploaded "
+        "file and preserves successful stages.  Dependencies are resolved "
+        "automatically (e.g. retrying pricing_calculation will also retry "
+        "boq_analysis and entity_extraction if needed)."
+    ),
+)
+async def process_retry(
+    job_id: str,
+    body: RetryRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Retry specific recoverable pipeline stages for an existing job.
+
+    Request body:
+      - **stages**: List of stage names to retry.
+        Valid: metadata_extraction, text_extraction, entity_extraction,
+        boq_analysis, pricing_calculation.
+
+    Rules:
+      - Only works for jobs in 'partial_success', 'failed', or 'completed' status
+      - Dependencies are resolved automatically
+      - Original uploaded file is reused (no re-upload needed)
+      - Successful stages are preserved (not re-executed unless required as deps)
+      - Retry count and retried stages are tracked in the database
+      - Original job history is preserved — retry creates a new result overlay
+
+    Logging:
+      [RETRY] Retrying <stage> for job <id>
+      [RETRY] Dependency <stage> included automatically
+      [RETRY] Retry completed: <status>
+      [RETRY] Retry rejected: <reason>
+    """
+    from ..services.retry_pipeline import run_retry_pipeline
+
+    # ── Validate requested stages ─────────────────────────────────────
+    if not body.stages:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No stages provided for retry. At least one stage is required.",
+        )
+
+    invalid_stages = [
+        s for s in body.stages
+        if s not in ("metadata_extraction", "text_extraction", "entity_extraction",
+                     "boq_analysis", "pricing_calculation")
+    ]
+    if invalid_stages:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid stage(s): {', '.join(invalid_stages)}. "
+                   f"Valid stages: metadata_extraction, text_extraction, "
+                   f"entity_extraction, boq_analysis, pricing_calculation.",
+        )
+
+    # ── Execute retry pipeline in background task ─────────────────────
+    # The retry is run synchronously within the request because it's fast
+    # (reuses existing data).  For long-running retries (text_extraction
+    # with OCR), this could be moved to a background task if needed.
+    try:
+        logger.info("[RETRY] Retrying stages %s for job %s (user=%s)",
+                     body.stages, job_id, current_user.get("email", "unknown"))
+
+        result = await run_retry_pipeline(job_id, body.stages)
+
+        logger.info("[RETRY] Retry completed for job %s: status=%s, retry_count=%d",
+                     job_id, result.get("status"), result.get("retry_count"))
+
+        return RetryResponse(
+            job_id=result["job_id"],
+            status=result["status"],
+            retry_count=result["retry_count"],
+            retried_stages=result["retried_stages"],
+            last_retry_at=result.get("last_retry_at"),
+            stage_failures=result.get("stage_failures", []),
+        )
+
+    except ValueError as e:
+        logger.warning("[RETRY] Retry rejected for job %s: %s", job_id, str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except FileNotFoundError as e:
+        logger.warning("[RETRY] Retry rejected for job %s: %s", job_id, str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.exception("[RETRY] Retry failed for job %s: %s", job_id, str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Retry failed: {str(e)}",
+        )
+
+
+@process_pipeline_router.get(
+    "/export/excel/{job_id}",
+    summary="Export processing result as Excel",
+    description=(
+        "Generate a downloadable .xlsx workbook from a processing result. "
+        "Includes BOQ items, pricing summary, workforce analysis, and warnings. "
+        "Unavailable data is clearly marked — no fabricated values."
+    ),
+)
+async def process_export_excel(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Export processing result as a structured Excel workbook.
+
+    Sheets:
+      1. BOQ Items — Extracted line items with quantities, rates, amounts
+      2. Pricing Summary — Pricing breakdown (labour, materials, VAT, etc.)
+      3. Workforce — Workforce requirements with categories
+      4. Warnings — Pipeline warnings, failed stages, retry metadata
+
+    Returns a streaming .xlsx file download.
+    Returns 404 if the job doesn't exist or has no result data.
+    Returns 400 if the job is still processing.
+    """
+    from fastapi.responses import StreamingResponse
+
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT job_id, status, filename, original_name, result_json, "
+            "retry_count, retry_data_json, error_message "
+            "FROM processing_jobs WHERE job_id = ?",
+            (job_id,),
+        )
+        row = await cursor.fetchone()
+
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Job '{job_id}' not found.",
+            )
+
+        job = dict(row)
+        job_status = job["status"]
+
+        # ── Blocked: still processing ──────────────────────────────
+        if job_status in ("queued", "processing"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot export while job is {job_status}. "
+                       f"Wait for processing to complete.",
+            )
+
+        # ── Load result data ───────────────────────────────────────
+        result_json = job.get("result_json")
+        if not result_json:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No result data available for job '{job_id}'.",
+            )
+
+        try:
+            result_dict = json.loads(result_json)
+        except (json.JSONDecodeError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Corrupt result data: {e}",
+            )
+
+        # ── Inject retry metadata into result dict for export ──────
+        retry_count = job.get("retry_count") or 0
+        retry_data_json = job.get("retry_data_json")
+        retry_metadata = {}
+        if retry_data_json:
+            try:
+                retry_metadata = json.loads(retry_data_json)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        retry_metadata["retry_count"] = retry_count
+        result_dict["retry_metadata"] = retry_metadata
+
+        # ── Generate Excel workbook ────────────────────────────────
+        try:
+            output = generate_export(job_id, result_dict)
+        except Exception as e:
+            logger.exception("[EXPORT] Failed to generate Excel for job %s", job_id)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to generate Excel export: {e}",
+            )
+
+        # ── Determine filename ─────────────────────────────────────
+        filename = job.get("original_name") or job.get("filename") or job_id
+        base_name = os.path.splitext(filename)[0]
+        safe_base = re.sub(r"[^a-zA-Z0-9\-_]", "_", base_name)[:80]
+        export_filename = f"{safe_base}_tender_export.xlsx"
+
+        logger.info(
+            "[EXPORT] Excel export generated for job %s — filename=%s",
+            job_id, export_filename,
+        )
+
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="{export_filename}"',
+                "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            },
+        )
 
     finally:
         await close_db(db)

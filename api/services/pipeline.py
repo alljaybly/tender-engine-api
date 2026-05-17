@@ -3,7 +3,7 @@ Tender document processing pipeline.
 
 Stages:
   1. File validation & metadata extraction
-  2. Document text extraction (PDF/DOCX/TXT)
+  2. Document text extraction (PDF/DOCX/TXT) with OCR fallback for scanned PDFs
   3. Entity extraction (sector, duration, location, workforce, schedule)
   4. BOQ extraction (uses boq_extractor.py)
   5. Pricing engine integration (builds PricingInput, runs calculate)
@@ -23,14 +23,18 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..schemas.process import ProcessingResult, ExtractedBOQItem
+from .boq_sanitizer import sanitize_boq_items, classify_boq_items
+from .workforce_inference import estimate_workforce, get_workforce_explanation
+from .ocr_extractor import extract_via_ocr, should_use_ocr, check_ocr_dependencies
 from ..services.database import get_db, close_db
 
 logger = logging.getLogger(__name__)
 
-PIPELINE_VERSION = "v1"
+PIPELINE_VERSION = "v2"
 
 # Configurable timeouts (seconds)
 PDF_EXTRACTION_TIMEOUT = 120
+OCR_EXTRACTION_TIMEOUT = 300   # OCR is slower — allow up to 5 minutes
 BOQ_EXTRACTION_TIMEOUT = 180
 
 # Valid pipeline stages for event logging
@@ -43,6 +47,7 @@ STAGES = [
     "pricing_calculation",
     "finalisation",
 ]
+
 
 # ── Timeout helper ─────────────────────────────────────────────────
 
@@ -118,21 +123,33 @@ def _extract_metadata(file_path: str, original_name: str) -> Dict[str, Any]:
     return meta
 
 
-# ── Stage 2: Text extraction ───────────────────────────────────────
+# ── Stage 2: Text extraction (with OCR fallback for scanned PDFs) ─
 
 
-async def _extract_text(file_path: str, original_name: str) -> Optional[str]:
+async def _extract_text(file_path: str, original_name: str) -> Tuple[Optional[str], bool]:
     """
     Extract full text from the uploaded document.
-    Supports PDF, DOCX, and TXT with timeout protection.
+
+    For PDFs, uses a two-phase approach:
+      Phase 1: Standard extraction via pdfplumber (fast, handles text-based PDFs).
+      Phase 2: OCR fallback via Tesseract (for scanned/image-based PDFs).
+               Only activates if Phase 1 returns insufficient text.
+
+    Returns (text, used_ocr):
+      - text: The extracted text, or None if completely failed.
+      - used_ocr: True if OCR was attempted (regardless of success or failure).
     """
     ext = os.path.splitext(original_name)[1].lower()
+    used_ocr = False
 
     if ext == ".pdf":
+        # ── Phase 1: Standard text extraction via pdfplumber ──────────
+        standard_text: Optional[str] = None
+        extraction_error: Optional[str] = None
+
         def _extract_pdf() -> Optional[str]:
             import pdfplumber
             try:
-                # pdfplumber.open() will raise an exception for malformed PDFs
                 text_parts: List[str] = []
                 with pdfplumber.open(file_path) as pdf:
                     for page in pdf.pages:
@@ -142,24 +159,82 @@ async def _extract_text(file_path: str, original_name: str) -> Optional[str]:
                 return "\n".join(text_parts) if text_parts else None
             except Exception as e:
                 logger.warning("[PIPELINE] PDF extraction inner error: %s", e)
-                raise  # re-raise so the outer handler catches it
+                raise
 
         loop = asyncio.get_event_loop()
         try:
-            full_text = await asyncio.wait_for(
+            standard_text = await asyncio.wait_for(
                 loop.run_in_executor(None, _extract_pdf),
                 timeout=PDF_EXTRACTION_TIMEOUT,
             )
-            if full_text:
-                logger.info("[PIPELINE] Extracted %d chars from PDF", len(full_text))
-            return full_text
+            if standard_text:
+                logger.info("[PIPELINE] Extracted %d chars from PDF via pdfplumber",
+                            len(standard_text))
+            else:
+                logger.warning("[PIPELINE] pdfplumber returned no text — PDF may be image-based")
         except asyncio.TimeoutError:
+            extraction_error = "PDF extraction timed out"
             logger.warning("[PIPELINE] PDF extraction timed out after %ds",
                            PDF_EXTRACTION_TIMEOUT)
-            return None
         except Exception as e:
+            extraction_error = str(e)
             logger.warning("[PIPELINE] PDF text extraction failed gracefully: %s", e)
-            return None
+
+        # ── Phase 2: OCR fallback ─────────────────────────────────────
+        # OCR is only attempted when pdfplumber returns no/too-little text.
+        # should_use_ocr now has full debug logging to explain its decision.
+        if should_use_ocr(standard_text, extraction_error):
+            used_ocr = True
+            logger.info("[PIPELINE] === INVOKING OCR FALLBACK ===")
+
+            def _run_ocr() -> Optional[str]:
+                """Run OCR in a thread pool — Tesseract is CPU-bound."""
+                try:
+                    # Check dependencies before heavy processing
+                    deps = check_ocr_dependencies()
+                    if not deps.get("tesseract"):
+                        logger.error("[PIPELINE] OCR cannot run: Tesseract not available")
+                        return None
+
+                    result = extract_via_ocr(file_path)
+                    if result.text:
+                        logger.info("[PIPELINE] OCR extracted %d chars (confidence=%s) "
+                                    "from %d/%d pages",
+                                    len(result.text), result.confidence,
+                                    result.page_count, result.total_pages)
+                    if result.errors:
+                        for err in result.errors:
+                            logger.warning("[PIPELINE] OCR error: %s", err)
+                    if result.confidence == "Low" and result.text:
+                        logger.warning("[PIPELINE] OCR confidence LOW — text may be poor quality")
+                    if not result.text:
+                        logger.warning("[PIPELINE] OCR returned empty text")
+                    return result.text
+                except Exception as e:
+                    logger.warning("[PIPELINE] OCR fallback failed: %s", e)
+                    return None
+
+            try:
+                ocr_text = await asyncio.wait_for(
+                    loop.run_in_executor(None, _run_ocr),
+                    timeout=OCR_EXTRACTION_TIMEOUT,
+                )
+            except asyncio.TimeoutError:
+                logger.warning("[PIPELINE] OCR fallback timed out after %ds",
+                               OCR_EXTRACTION_TIMEOUT)
+                ocr_text = None
+
+            if ocr_text:
+                logger.info("[PIPELINE] OCR fallback succeeded — %d chars returned", len(ocr_text))
+                return ocr_text, used_ocr
+            else:
+                logger.warning("[PIPELINE] OCR fallback produced no usable text — "
+                               "falling back to standard extraction result")
+                return standard_text, used_ocr
+
+        # Standard extraction was sufficient — no OCR needed
+        logger.info("[PIPELINE] Standard extraction adequate — OCR not needed")
+        return standard_text, used_ocr
 
     elif ext == ".docx":
         try:
@@ -168,24 +243,24 @@ async def _extract_text(file_path: str, original_name: str) -> Optional[str]:
             text_parts = [p.text for p in doc.paragraphs]
             full_text = "\n".join(text_parts)
             logger.info("[PIPELINE] Extracted %d chars from DOCX", len(full_text))
-            return full_text
+            return full_text, used_ocr
         except Exception as e:
             logger.warning("[PIPELINE] DOCX text extraction failed: %s", e)
-            return None
+            return None, used_ocr
 
     elif ext == ".txt":
         try:
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 full_text = f.read()
             logger.info("[PIPELINE] Read %d chars from TXT", len(full_text))
-            return full_text
+            return full_text, used_ocr
         except Exception as e:
             logger.warning("[PIPELINE] TXT text extraction failed: %s", e)
-            return None
+            return None, used_ocr
 
     else:
         logger.warning("[PIPELINE] Unsupported file type: %s", ext)
-        return None
+        return None, used_ocr
 
 
 # ── Stage 3: Entity extraction ─────────────────────────────────────
@@ -557,6 +632,9 @@ async def run_pipeline(job_id: str, file_path: str, original_name: str,
     pricing_mode: str = "estimated"
     text_length: int = 0
 
+    # Track OCR usage for warnings
+    used_ocr: bool = False
+
     try:
         # ── Stage 1: Metadata ──────────────────────────────────────
         t0 = time.monotonic()
@@ -572,15 +650,42 @@ async def run_pipeline(job_id: str, file_path: str, original_name: str,
             logger.warning("[PIPELINE] Stage 1 failed: %s", e)
             metadata = {"size_bytes": 0, "file_type": "unknown"}
 
-        # ── Stage 2: Text extraction ───────────────────────────────
+        # ── Stage 2: Text extraction (with OCR fallback) ──────────
         t0 = time.monotonic()
         await _update_job(job_id, progress="document_text_extraction")
         try:
-            full_text = await _extract_text(file_path, original_name)
+            # _extract_text now returns (text, used_ocr) tuple
+            full_text, used_ocr = await _extract_text(file_path, original_name)
             text_length = len(full_text) if full_text else 0
-            stage_results["text_extraction"] = full_text is not None
-            detail = f"{text_length} chars extracted" if full_text else "No text extracted"
-            await _record_stage(job_id, "text_extraction", full_text is not None, detail, t0)
+
+            # Determine text_extraction success:
+            # - True if we have meaningful text from any source (pdfplumber OR OCR)
+            # - False only if BOTH standard AND OCR completely failed
+            has_meaningful_text = full_text is not None and len(full_text.strip()) > 0
+            stage_results["text_extraction"] = has_meaningful_text
+
+            detail_parts = []
+            if has_meaningful_text:
+                detail_parts.append(f"{text_length} chars extracted")
+            else:
+                detail_parts.append("No text extracted")
+            if used_ocr:
+                detail_parts.append("OCR fallback used")
+            detail = "; ".join(detail_parts)
+
+            await _record_stage(job_id, "text_extraction", has_meaningful_text, detail, t0)
+
+            if used_ocr and has_meaningful_text:
+                logger.info(
+                    "[PIPELINE] text_extraction=True via OCR fallback (%d chars) — "
+                    "sector/duration/location extraction may now succeed",
+                    text_length,
+                )
+            elif not has_meaningful_text:
+                logger.warning(
+                    "[PIPELINE] text_extraction=False — no text from pdfplumber OR OCR"
+                )
+
         except Exception as e:
             stage_results["text_extraction"] = False
             await _record_stage(job_id, "text_extraction", False, str(e), t0)
@@ -603,16 +708,61 @@ async def run_pipeline(job_id: str, file_path: str, original_name: str,
         # ── Stage 4: BOQ extraction ────────────────────────────────
         t0 = time.monotonic()
         await _update_job(job_id, progress="boq_analysis")
+        raw_item_count = 0
+        sanitized_item_count = 0
         try:
             ext = os.path.splitext(original_name)[1].lower()
             if ext == ".pdf":
                 boq_items, boq_confidence, boq_warnings = await _extract_boq(file_path)
+                raw_item_count = len(boq_items)
+
+                # ── BOQ Sanitization ─────────────────────────────────
+                # Remove non-work rows (admin, legal, procurement, scoring)
+                sanitized_items, removal_log = sanitize_boq_items(boq_items)
+                sanitized_item_count = len(sanitized_items)
+                removed_count = raw_item_count - sanitized_item_count
+
+                if removal_log:
+                    boq_warnings.append(
+                        f"Removed {removed_count} non-work rows from BOQ "
+                        f"({sanitized_item_count} actionable items remain)"
+                    )
+                    boq_warnings.extend(removal_log[:10])  # Top 10 removal reasons
+
+                # ── Workforce Inference ───────────────────────────────
+                # Use sanitized items for workforce estimation (better quality)
+                if sanitized_items:
+                    inferred_workforce, workforce_confidence, workforce_reasoning = (
+                        estimate_workforce(sanitized_items)
+                    )
+                    # Merge inferred workforce into entities
+                    # Only if document didn't provide explicit workforce data
+                    existing_workforce = entities.get("detected_workforce", {})
+                    if not existing_workforce or not any(
+                        k in existing_workforce for k in ("skilled_workers", "unskilled_workers", "supervisors")
+                    ):
+                        entities["detected_workforce"] = inferred_workforce
+                        entities["workforce_inference_confidence"] = workforce_confidence
+                        entities["workforce_reasoning"] = workforce_reasoning
+                        boq_warnings.append(
+                            f"Workforce inferred from BOQ categories: "
+                            f"{inferred_workforce.get('total_workers')} total workers "
+                            f"(confidence: {workforce_confidence})"
+                        )
+                        logger.info(
+                            "[PIPELINE] Workforce inferred from BOQ for job %s: %s",
+                            job_id, inferred_workforce,
+                        )
+
+                # Use sanitized items for downstream processing
+                boq_items = sanitized_items
             else:
                 boq_warnings.append("BOQ extraction only supported for PDF files")
             boq_ok = ext != ".pdf" or bool(boq_items) or boq_confidence in ("Medium", "High")
             stage_results["boq_analysis"] = boq_ok
             await _record_stage(job_id, "boq_analysis", boq_ok,
-                                f"{len(boq_items)} items, confidence={boq_confidence}", t0)
+                                f"{raw_item_count} raw → {sanitized_item_count} sanitized items, "
+                                f"confidence={boq_confidence}", t0)
         except Exception as e:
             stage_results["boq_analysis"] = False
             await _record_stage(job_id, "boq_analysis", False, str(e), t0)
@@ -646,6 +796,18 @@ async def run_pipeline(job_id: str, file_path: str, original_name: str,
         await _update_job(job_id, progress="finalising")
         warnings: List[str] = list(boq_warnings)
 
+        # Add OCR-specific warnings
+        if used_ocr:
+            if full_text and len(full_text) > 0:
+                warnings.append(
+                    f"Text extracted via OCR fallback — quality may be reduced "
+                    f"({text_length} chars extracted)"
+                )
+            else:
+                warnings.append(
+                    "OCR fallback was attempted but did not produce usable text"
+                )
+
         stored_text = full_text[:100000] if full_text else None
 
         # ── Determine final status ────────────────────────────────────
@@ -673,7 +835,7 @@ async def run_pipeline(job_id: str, file_path: str, original_name: str,
 
         result = ProcessingResult(
             job_id=job_id,
-            status=final_status,   # ← critical: use actual final status, not hardcoded "completed"
+            status=final_status,
             filename=original_name,
             completed_stages=completed_stages,
             failed_stages=failed_stages,

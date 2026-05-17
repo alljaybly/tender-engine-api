@@ -86,6 +86,28 @@ export interface ProcessingResult {
   pipeline_version: string | null;
 }
 
+/**
+ * Lightweight history summary returned by GET /api/process/history.
+ *
+ * Backend reference: api/schemas/process.py :: ProcessingHistoryItem
+ *
+ * This is the BACKEND-AUTHORITATIVE source of truth for the user's job history.
+ * The frontend does NOT cache full results here — only lightweight summary fields
+ * that are safe to display without fetching the full result payload.
+ */
+export interface ProcessingHistoryItem {
+  job_id: string;
+  filename: string | null;
+  status: string;
+  created_at: string | null;
+  updated_at: string | null;
+  sector: string | null;
+  confidence: string | null;
+  warnings_count: number;
+  has_pricing: boolean;
+  error_message: string | null;
+}
+
 /** Statuses that indicate a job has finished processing. */
 export const TERMINAL_STATUSES: readonly JobStatusValue[] = [
   'completed',
@@ -104,6 +126,31 @@ export const STATUS_LABELS: Record<JobStatusValue, string> = {
   partial_success: 'Partial Success',
   failed: 'Failed',
 };
+
+/**
+ * Request body for POST /api/process/retry/{job_id}.
+ */
+export interface RetryRequest {
+  stages: string[];
+}
+
+/**
+ * Response from a retry operation.
+ */
+export interface RetryResponse {
+  job_id: string;
+  status: string;
+  retry_count: number;
+  retried_stages: string[];
+  last_retry_at: string | null;
+  stage_failures: Array<{
+    stage: string;
+    reason: string;
+    recoverable: boolean;
+    retryable: boolean;
+    description: string;
+  }>;
+}
 
 /** Allowed file types for upload. */
 export const ALLOWED_FILE_TYPES = [
