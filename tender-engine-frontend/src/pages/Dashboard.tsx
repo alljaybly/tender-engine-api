@@ -39,6 +39,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import AppFooter from '../components/layout/AppFooter';
 import UploadCard from '../components/UploadCard';
 import TenderHistory from '../components/TenderHistory';
 import type { HistoryItem } from '../components/TenderHistory';
@@ -800,6 +801,9 @@ export default function Dashboard() {
             </div>
           </div>
         </main>
+
+        {/* Footer */}
+        <AppFooter />
       </div>
     );
   }

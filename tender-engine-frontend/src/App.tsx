@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import DemoPage from './pages/DemoPage';
+import TermsPage from './pages/legal/TermsPage';
+import PrivacyPage from './pages/legal/PrivacyPage';
 
 function App() {
   return (
@@ -18,6 +20,10 @@ function App() {
 
           {/* Demo experience — no auth required */}
           <Route path="/demo" element={<DemoPage />} />
+
+          {/* Legal pages */}
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
 
           {/* Existing auth routes */}
           <Route path="/login" element={<Login />} />

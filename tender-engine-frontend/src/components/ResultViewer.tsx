@@ -1,293 +1,378 @@
 /**
- * ResultViewer — Displays real backend processing results.
+ * ResultViewer — Professional SaaS intelligence dashboard.
  *
- * Shows all fields from ProcessingResult:
- *   - filename, detected_sector, detected_duration_months
- *   - detected_locations, workforce data, schedule data
- *   - BOQ items, pricing result, pricing status
- *   - warnings, failed_stages, completed_stages
+ * Transforms processing results into a polished, scannable executive dashboard
+ * with clear transparency: confidence scores, partial-success, failed stages.
  *
- * Visual distinctions:
- *   - completed → green success indicators
- *   - partial_success → amber warning panels (NOT success)
- *   - failed → red error panels
- *
- * Actions:
- *   - Download Excel Export button (for completed or partial_success jobs)
- *   - Retry buttons for recoverable failed stages
+ * CRITICAL: Warnings, failures, and partial-success are core differentiators.
+ * They are never hidden — only presented professionally.
  */
 import { useState } from 'react';
-import { downloadExcelExport, downloadPdfReport, retryJob } from '../services/process';
+import {
+  Download,
+  FileText,
+  AlertTriangle,
+  XCircle,
+  CheckCircle,
+  HardDrive,
+  Clock,
+  MapPin,
+  Users,
+  Calendar,
+  BarChart3,
+  DollarSign,
+  Building2,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  FileSpreadsheet,
+} from 'lucide-react';
+import { downloadExcelExport, downloadPdfReport } from '../services/process';
 import type { ProcessingResult, ExtractedBOQItem } from '../types/process';
 
 interface ResultViewerProps {
   result: ProcessingResult;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                           */
+/* ------------------------------------------------------------------ */
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-ZA', {
+    style: 'currency',
+    currency: 'ZAR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function getConfidenceColor(value: number | null | undefined): string {
+  if (value == null) return 'bg-gray-200 text-gray-600';
+  if (value >= 0.9) return 'bg-green-100 text-green-800';
+  if (value >= 0.7) return 'bg-amber-100 text-amber-800';
+  return 'bg-red-100 text-red-800';
+}
+
+function getConfidenceBarColor(value: number | null | undefined): string {
+  if (value == null) return 'bg-gray-300';
+  if (value >= 0.9) return 'bg-green-500';
+  if (value >= 0.7) return 'bg-amber-500';
+  return 'bg-red-500';
+}
+
+function getConfidenceLabel(value: number | null | undefined): string {
+  if (value == null) return 'N/A';
+  if (value >= 0.9) return 'High';
+  if (value >= 0.7) return 'Medium';
+  return 'Low';
+}
+
+function formatStageName(stage: string): string {
+  return stage.replace(/_/g, ' ');
+}
+
+/* ------------------------------------------------------------------ */
+/*  Status Banner                                                     */
+/* ------------------------------------------------------------------ */
+
+function StatusBanner({ result }: { result: ProcessingResult }) {
+  const config = {
+    completed: {
+      bg: 'bg-emerald-50 border-emerald-200',
+      icon: CheckCircle,
+      iconColor: 'text-emerald-500',
+      title: 'Processing completed successfully — all stages finished.',
+      textColor: 'text-emerald-800',
+    },
+    partial_success: {
+      bg: 'bg-amber-50 border-amber-200',
+      icon: AlertTriangle,
+      iconColor: 'text-amber-500',
+      title: 'Partial Success — some stages completed, others failed.',
+      textColor: 'text-amber-800',
+    },
+    failed: {
+      bg: 'bg-red-50 border-red-200',
+      icon: XCircle,
+      iconColor: 'text-red-500',
+      title: 'Processing Failed',
+      textColor: 'text-red-800',
+    },
+  };
+
+  const c = config[result.status];
+  const Icon = c.icon;
+
+  return (
+    <div className={`rounded-xl border ${c.bg} p-4`}>
+      <div className="flex items-start gap-3">
+        <Icon className={`h-5 w-5 ${c.iconColor} flex-shrink-0 mt-0.5`} />
+        <div>
+          <p className={`text-sm font-semibold ${c.textColor}`}>{c.title}</p>
+          {result.status === 'partial_success' && (
+            <p className="text-sm text-amber-600 mt-1">
+              Successfully extracted data is shown below. Unavailable sections
+              are marked with failure reasons.
+            </p>
+          )}
+          {result.status === 'failed' && result.warnings.length > 0 && (
+            <p className="text-sm text-red-600 mt-1">{result.warnings[0]}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Warning Panel                                                     */
+/* ------------------------------------------------------------------ */
+
 function WarningPanel({ warnings }: { warnings: string[] }) {
+  const [expanded, setExpanded] = useState(false);
   if (warnings.length === 0) return null;
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-md px-4 py-3">
-      <div className="flex items-start gap-2">
-        <svg
-          className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-          />
-        </svg>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-amber-800">Warnings</p>
-          <ul className="mt-1 text-sm text-amber-700 list-disc list-inside space-y-1">
+    <div className="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-4 hover:bg-amber-100/50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+          <span className="text-sm font-semibold text-amber-800">
+            {warnings.length} Warning{warnings.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4 text-amber-500" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-amber-500" />
+        )}
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4">
+          <ul className="space-y-1.5">
             {warnings.map((w, i) => (
-              <li key={i}>{w}</li>
+              <li key={i} className="text-sm text-amber-700 flex items-start gap-2">
+                <span className="mt-1.5 block h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                {w}
+              </li>
             ))}
           </ul>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Failed Stages Panel                                               */
+/* ------------------------------------------------------------------ */
+
 function FailedStagesPanel({ failedStages }: { failedStages: string[] }) {
+  const [expanded, setExpanded] = useState(true);
   if (failedStages.length === 0) return null;
 
   return (
-    <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3">
-      <div className="flex items-start gap-2">
-        <svg
-          className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-red-800">Failed Stages</p>
-          <p className="text-sm text-red-600 mt-1">
-            The following processing stages failed and their results are
-            unavailable:
+    <div className="rounded-xl border border-red-200 bg-red-50 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-4 hover:bg-red-100/50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+          <span className="text-sm font-semibold text-red-800">
+            {failedStages.length} Failed Stage{failedStages.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4 text-red-500" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-red-500" />
+        )}
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4">
+          <p className="text-sm text-red-600 mb-2">
+            The following processing stages failed and their results are unavailable:
           </p>
-          <ul className="mt-1 text-sm text-red-700 list-disc list-inside space-y-1">
+          <ul className="space-y-1.5">
             {failedStages.map((stage, i) => (
-              <li key={i}>{stage}</li>
+              <li key={i} className="text-sm text-red-700 flex items-start gap-2">
+                <span className="mt-1.5 block h-1.5 w-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                {formatStageName(stage)}
+              </li>
             ))}
           </ul>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-function StatusBanner({ result }: { result: ProcessingResult }) {
-  switch (result.status) {
-    case 'completed':
-      return (
-        <div className="bg-green-50 border border-green-200 rounded-md px-4 py-3">
-          <div className="flex items-center gap-2">
-            <svg
-              className="h-5 w-5 text-green-500 flex-shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-sm font-medium text-green-800">
-              Processing completed successfully — all stages finished.
-            </p>
-          </div>
-        </div>
-      );
-    case 'partial_success':
-      return (
-        <div className="bg-amber-50 border border-amber-200 rounded-md px-4 py-3">
-          <div className="flex items-start gap-2">
-            <svg
-              className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-              />
-            </svg>
-            <div>
-              <p className="text-sm font-medium text-amber-800">
-                Partial Success — some stages completed, but others failed.
-              </p>
-              <p className="text-sm text-amber-600 mt-1">
-                Successfully extracted data is displayed below. Unavailable
-                sections are marked with failure reasons.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    case 'failed':
-      return (
-        <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3">
-          <div className="flex items-start gap-2">
-            <svg
-              className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-              />
-            </svg>
-            <div>
-              <p className="text-sm font-medium text-red-800">
-                Processing Failed
-              </p>
-              {result.warnings.length > 0 && (
-                <p className="text-sm text-red-600 mt-1">
-                  {result.warnings[0]}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-  }
-}
+/* ------------------------------------------------------------------ */
+/*  Metric Card                                                       */
+/* ------------------------------------------------------------------ */
 
-function SectionCard({
-  title,
-  children,
-  empty = false,
-  isEmpty = false,
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  subtext,
+  color = 'text-gray-900',
 }: {
-  title: string;
-  children: React.ReactNode;
-  empty?: boolean;
-  isEmpty?: boolean;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  subtext?: string;
+  color?: string;
 }) {
-  if (isEmpty || empty) {
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
-        </div>
-        <div className="px-5 py-4">
-          <p className="text-sm text-gray-400 italic">Not available</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="px-5 py-4 border-b border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-3">
+        <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
+          <Icon className="h-4.5 w-4.5 text-blue-600" />
+        </div>
       </div>
-      <div className="px-5 py-4">{children}</div>
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+        {label}
+      </p>
+      <p className={`text-xl font-bold ${color} truncate`}>{value}</p>
+      {subtext && (
+        <p className="mt-0.5 text-xs text-gray-400">{subtext}</p>
+      )}
     </div>
   );
 }
 
-function MetadataCard({ metadata }: { metadata: Record<string, unknown> }) {
-  const entries = Object.entries(metadata);
-  if (entries.length === 0) return null;
+/* ------------------------------------------------------------------ */
+/*  Confidence Badge                                                  */
+/* ------------------------------------------------------------------ */
 
+function ConfidenceBadge({
+  label,
+  value,
+  showBar = true,
+}: {
+  label: string;
+  value: number | null | undefined;
+  showBar?: boolean;
+}) {
+  const pct = value != null ? `${Math.round(value * 100)}%` : 'N/A';
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="px-5 py-4 border-b border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-700">File Metadata</h3>
-      </div>
-      <div className="px-5 py-4">
-        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {entries.map(([key, value]) => (
-            <div key={key}>
-              <dt className="text-xs font-medium text-gray-500 capitalize">
-                {key.replace(/_/g, ' ')}
-              </dt>
-              <dd className="mt-0.5 text-sm text-gray-900">
-                {String(value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
+    <div className="flex items-center justify-between py-1.5">
+      <span className="text-sm text-gray-600">{label}</span>
+      <div className="flex items-center gap-2">
+        {showBar && value != null && (
+          <div className="w-16 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+            <div
+              className={`h-full rounded-full ${getConfidenceBarColor(value)}`}
+              style={{ width: `${Math.round(value * 100)}%` }}
+            />
+          </div>
+        )}
+        <span
+          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${getConfidenceColor(value)}`}
+        >
+          {pct}
+        </span>
       </div>
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Stage Badges                                                      */
+/* ------------------------------------------------------------------ */
+
+function StageBadges({
+  completed,
+  failed,
+}: {
+  completed: string[];
+  failed: string[];
+}) {
+  if (completed.length === 0 && failed.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {completed.map((stage) => (
+        <span
+          key={stage}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
+        >
+          <CheckCircle className="h-3 w-3" />
+          {formatStageName(stage)}
+        </span>
+      ))}
+      {failed.map((stage) => (
+        <span
+          key={stage}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200"
+        >
+          <XCircle className="h-3 w-3" />
+          {formatStageName(stage)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  BOQ Table                                                        */
+/* ------------------------------------------------------------------ */
 
 function BOQTable({ items }: { items: ExtractedBOQItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-gray-200">
       <table className="min-w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200">
-            <th className="text-left py-2 px-3 font-medium text-gray-500 text-xs uppercase">
+          <tr className="bg-gray-50 border-b border-gray-200">
+            <th className="text-left py-3 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">
               Item
             </th>
-            <th className="text-left py-2 px-3 font-medium text-gray-500 text-xs uppercase">
+            <th className="text-left py-3 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">
               Description
             </th>
-            <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs uppercase">
+            <th className="text-right py-3 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">
               Qty
             </th>
-            <th className="text-left py-2 px-3 font-medium text-gray-500 text-xs uppercase">
+            <th className="text-left py-3 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">
               Unit
             </th>
-            <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs uppercase">
+            <th className="text-right py-3 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">
               Rate
             </th>
-            <th className="text-right py-2 px-3 font-medium text-gray-500 text-xs uppercase">
+            <th className="text-right py-3 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">
               Amount
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-100">
           {items.map((item, i) => (
-            <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-2 px-3 text-gray-700">{item.item_no || '-'}</td>
-              <td className="py-2 px-3 text-gray-900 max-w-xs truncate">
+            <tr
+              key={i}
+              className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/30 transition-colors`}
+            >
+              <td className="py-2.5 px-4 text-gray-500 font-mono text-xs">
+                {item.item_no || '-'}
+              </td>
+              <td className="py-2.5 px-4 text-gray-900 max-w-xs truncate" title={item.description}>
                 {item.description}
               </td>
-              <td className="py-2 px-3 text-right text-gray-700">
-                {item.quantity != null ? item.quantity : '-'}
+              <td className="py-2.5 px-4 text-right text-gray-700 tabular-nums">
+                {item.quantity != null ? item.quantity.toLocaleString() : '-'}
               </td>
-              <td className="py-2 px-3 text-gray-700">{item.unit || '-'}</td>
-              <td className="py-2 px-3 text-right text-gray-700">
-                {item.rate != null
-                  ? `R${item.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : '-'}
+              <td className="py-2.5 px-4 text-gray-600">{item.unit || '-'}</td>
+              <td className="py-2.5 px-4 text-right text-gray-700 tabular-nums">
+                {item.rate != null ? formatCurrency(item.rate) : '-'}
               </td>
-              <td className="py-2 px-3 text-right text-gray-900 font-medium">
-                {item.amount != null
-                  ? `R${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : '-'}
+              <td className="py-2.5 px-4 text-right font-semibold text-gray-900 tabular-nums">
+                {item.amount != null ? formatCurrency(item.amount) : '-'}
               </td>
             </tr>
           ))}
@@ -297,60 +382,98 @@ function BOQTable({ items }: { items: ExtractedBOQItem[] }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Pricing Section                                                   */
+/* ------------------------------------------------------------------ */
+
 function PricingSection({ result }: { result: ProcessingResult }) {
-  const pricingUnavailable = result.pricing_status === 'failed' || !result.pricing_result;
+  const pricingUnavailable =
+    result.pricing_status === 'failed' || !result.pricing_result;
 
   if (pricingUnavailable) {
     return (
-      <SectionCard title="Pricing">
-        <div className="bg-red-50 border border-red-200 rounded-md px-3 py-2">
-          <p className="text-sm font-medium text-red-800">
-            Pricing Unavailable
-          </p>
-          {result.pricing_unavailable_reason && (
-            <p className="text-sm text-red-600 mt-1">
-              {result.pricing_unavailable_reason}
+      <div className="rounded-xl border border-red-200 bg-red-50 p-5">
+        <div className="flex items-start gap-3">
+          <DollarSign className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">
+              Pricing Unavailable
             </p>
-          )}
-          {result.failed_stages.includes('pricing_calculation') && (
-            <p className="text-sm text-red-600 mt-1">
-              The pricing calculation stage failed during processing.
-            </p>
-          )}
+            {result.pricing_unavailable_reason && (
+              <p className="text-sm text-red-600 mt-1">
+                {result.pricing_unavailable_reason}
+              </p>
+            )}
+            {result.failed_stages.includes('pricing_calculation') && (
+              <p className="text-sm text-red-600 mt-1">
+                The pricing calculation stage failed during processing.
+              </p>
+            )}
+          </div>
         </div>
-      </SectionCard>
+      </div>
     );
   }
 
+  const pr = result.pricing_result as Record<string, number | string>;
+  const rows = Object.entries(pr);
+
+  // Identify the total amount (last field usually)
+  const totalKey = rows.length > 0 ? rows[rows.length - 1][0] : null;
+  const totalValue = totalKey ? pr[totalKey] : null;
+
   return (
-    <SectionCard title="Pricing" empty={false}>
-      {result.pricing_result && (
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {Object.entries(result.pricing_result).map(([key, value]) => (
-            <div key={key}>
-              <dt className="text-xs font-medium text-gray-500 capitalize">
-                {key.replace(/_/g, ' ')}
-              </dt>
-              <dd className="mt-0.5 text-sm text-gray-900">
-                {typeof value === 'number'
-                  ? `R${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : String(value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {result.pricing_status === 'completed' && (
-        <div className="mt-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            Pricing completed
-          </span>
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center gap-2 mb-5">
+        <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+          <DollarSign className="h-4 w-4 text-emerald-600" />
         </div>
-      )}
-    </SectionCard>
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">
+            Pricing Breakdown
+          </h3>
+          {result.pricing_status === 'completed' && (
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Completed
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {rows.map(([key, value]) => {
+          const isTotal = key === totalKey;
+          return (
+            <div
+              key={key}
+              className={`rounded-lg border ${
+                isTotal
+                  ? 'border-emerald-200 bg-emerald-50 col-span-full'
+                  : 'border-gray-100 bg-gray-50'
+              } p-3`}
+            >
+              <p className="text-xs font-medium text-gray-500 capitalize mb-0.5">
+                {key.replace(/_/g, ' ')}
+              </p>
+              <p
+                className={`${
+                  isTotal ? 'text-lg font-bold text-emerald-800' : 'text-sm font-semibold text-gray-900'
+                } tabular-nums`}
+              >
+                {typeof value === 'number' ? formatCurrency(value) : String(value)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Main ResultViewer                                                 */
+/* ------------------------------------------------------------------ */
 
 export default function ResultViewer({ result }: ResultViewerProps) {
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -361,9 +484,13 @@ export default function ResultViewer({ result }: ResultViewerProps) {
     setExportingExcel(true);
     setExportError(null);
     try {
-      await downloadExcelExport(result.job_id, `${result.filename ?? 'tender'}_export.xlsx`);
+      await downloadExcelExport(
+        result.job_id,
+        `${result.filename ?? 'tender'}_export.xlsx`,
+      );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to download export';
+      const message =
+        err instanceof Error ? err.message : 'Failed to download export';
       setExportError(message);
     } finally {
       setExportingExcel(false);
@@ -374,35 +501,21 @@ export default function ResultViewer({ result }: ResultViewerProps) {
     setExportingPdf(true);
     setExportError(null);
     try {
-      await downloadPdfReport(result.job_id, `${result.filename ?? 'tender'}_report.pdf`);
+      await downloadPdfReport(
+        result.job_id,
+        `${result.filename ?? 'tender'}_report.pdf`,
+      );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to download PDF';
+      const message =
+        err instanceof Error ? err.message : 'Failed to download PDF';
       setExportError(message);
     } finally {
       setExportingPdf(false);
     }
   };
 
-  const canExport = result.status === 'completed' || result.status === 'partial_success';
-
-  if (result.status === 'failed') {
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="px-6 py-5 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Result</h2>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          <StatusBanner result={result} />
-          {result.warnings.length > 0 && <WarningPanel warnings={result.warnings} />}
-          {result.filename && (
-            <p className="text-sm text-gray-500">
-              File: <span className="font-medium text-gray-700">{result.filename}</span>
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const canExport =
+    result.status === 'completed' || result.status === 'partial_success';
 
   const hasBOQ = result.boq_items && result.boq_items.length > 0;
   const hasWorkforce =
@@ -411,350 +524,372 @@ export default function ResultViewer({ result }: ResultViewerProps) {
   const hasSchedule =
     result.detected_schedule &&
     Object.keys(result.detected_schedule).length > 0;
-  const hasMetadata =
-    result.metadata && Object.keys(result.metadata).length > 0;
+
+  // Compute an overall confidence score if confidence_scores not in result
+  const overallConfidence =
+    result.boq_confidence != null
+      ? parseFloat(result.boq_confidence.replace('%', '')) / 100
+      : null;
+
+  // Total BOQ amount for summary
+  const totalBOQ = hasBOQ
+    ? result.boq_items.reduce((sum, item) => sum + (item.amount ?? 0), 0)
+    : 0;
+
+  // Failed state — compact view
+  if (result.status === 'failed') {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="px-6 py-5 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-gray-900">Result</h2>
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <StatusBanner result={result} />
+          {result.warnings.length > 0 && (
+            <WarningPanel warnings={result.warnings} />
+          )}
+          {result.filename && (
+            <p className="text-sm text-gray-500">
+              File:{' '}
+              <span className="font-medium text-gray-700">
+                {result.filename}
+              </span>
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="px-6 py-5 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Result</h2>
-      </div>
-
-      <div className="px-6 py-5 space-y-5">
-        {/* Status banner */}
-        <StatusBanner result={result} />
-
-        {/* Warnings */}
-        {result.warnings.length > 0 && (
-          <WarningPanel warnings={result.warnings} />
-        )}
-
-        {/* Failed stages */}
-        {result.failed_stages.length > 0 && (
-          <FailedStagesPanel failedStages={result.failed_stages} />
-        )}
-
-        {/* Filename */}
-        {result.filename && (
-          <div className="text-sm text-gray-500">
-            File: <span className="font-medium text-gray-700">{result.filename}</span>
+    <div className="space-y-6">
+      {/* ── Header Row ──────────────────────────────────────────── */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="px-6 py-5 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center">
+              <BarChart3 className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                Processing Result
+              </h2>
+              {result.filename && (
+                <p className="text-sm text-gray-500">{result.filename}</p>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Action buttons */}
-        <div className="flex flex-wrap gap-3">
-          {/* Download Excel Export */}
-          {canExport && (
-            <button
-              onClick={handleDownloadExcel}
-              disabled={exportingExcel}
-              className="inline-flex items-center px-4 py-2 border border-gray-300
-                text-sm font-medium rounded-md shadow-sm text-gray-700
-                bg-white hover:bg-gray-50 focus:outline-none focus:ring-2
-                focus:ring-offset-2 focus:ring-blue-500
-                disabled:opacity-50 disabled:cursor-not-allowed
-                transition-colors"
-            >
-              {exportingExcel ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                  </svg>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="-ml-1 mr-2 h-4 w-4 text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  Download Excel Export
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Download PDF Report */}
-          {canExport && (
-            <button
-              onClick={handleDownloadPdf}
-              disabled={exportingPdf}
-              className="inline-flex items-center px-4 py-2 border border-gray-300
-                text-sm font-medium rounded-md shadow-sm text-gray-700
-                bg-white hover:bg-gray-50 focus:outline-none focus:ring-2
-                focus:ring-offset-2 focus:ring-blue-500
-                disabled:opacity-50 disabled:cursor-not-allowed
-                transition-colors"
-            >
-              {exportingPdf ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                  </svg>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="-ml-1 mr-2 h-4 w-4 text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  Download PDF Report
-                </>
-              )}
-            </button>
-          )}
+          {/* Export buttons */}
+          <div className="flex flex-wrap gap-2">
+            {canExport && (
+              <button
+                onClick={handleDownloadExcel}
+                disabled={exportingExcel}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              >
+                {exportingExcel ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4" />
+                )}
+                {exportingExcel ? 'Generating...' : 'Excel Export'}
+              </button>
+            )}
+            {canExport && (
+              <button
+                onClick={handleDownloadPdf}
+                disabled={exportingPdf}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              >
+                {exportingPdf ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                {exportingPdf ? 'Generating...' : 'PDF Report'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Export error */}
         {exportError && (
-          <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3">
+          <div className="px-6 py-3 border-b border-red-100 bg-red-50">
             <div className="flex items-start gap-2">
-              <svg
-                className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-                />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-red-800">
-                  Export Failed
-                </p>
-                <p className="text-sm text-red-600 mt-1">{exportError}</p>
-              </div>
+              <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{exportError}</p>
             </div>
           </div>
         )}
 
-        {/* Stage tracking */}
-        {result.completed_stages.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              Processing Stages
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {result.completed_stages.map((stage) => (
-                <span
-                  key={stage}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700"
-                >
-                  <svg
-                    className="h-3 w-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.5 12.75l6 6 9-13.5"
-                    />
-                  </svg>
-                  {stage.replace(/_/g, ' ')}
-                </span>
-              ))}
-              {result.failed_stages.map((stage) => (
-                <span
-                  key={stage}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700"
-                >
-                  <svg
-                    className="h-3 w-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                  {stage.replace(/_/g, ' ')}
-                </span>
-              ))}
+        <div className="px-6 py-5 space-y-5">
+          {/* Status */}
+          <StatusBanner result={result} />
+
+          {/* Warnings — expandable */}
+          {result.warnings.length > 0 && (
+            <WarningPanel warnings={result.warnings} />
+          )}
+
+          {/* Failed stages — expandable */}
+          {result.failed_stages.length > 0 && (
+            <FailedStagesPanel failedStages={result.failed_stages} />
+          )}
+
+          {/* Stage badges */}
+          {(result.completed_stages.length > 0 ||
+            result.failed_stages.length > 0) && (
+            <div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Processing Stages
+              </h3>
+              <StageBadges
+                completed={result.completed_stages}
+                failed={result.failed_stages}
+              />
             </div>
-          </div>
-        )}
-
-        {/* Metadata */}
-        {hasMetadata && <MetadataCard metadata={result.metadata} />}
-
-        {/* Extracted entities */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SectionCard title="Sector" isEmpty={!result.detected_sector}>
-            <p className="text-sm font-medium text-gray-900 capitalize">
-              {result.detected_sector || 'Not detected'}
-            </p>
-          </SectionCard>
-
-          <SectionCard
-            title="Duration"
-            isEmpty={result.detected_duration_months == null}
-          >
-            <p className="text-sm font-medium text-gray-900">
-              {result.detected_duration_months != null
-                ? `${result.detected_duration_months} months`
-                : 'Not detected'}
-            </p>
-          </SectionCard>
-
-          <SectionCard
-            title="Locations"
-            isEmpty={result.detected_locations.length === 0}
-          >
-            {result.detected_locations.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {result.detected_locations.map((loc, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 capitalize"
-                  >
-                    {loc}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400 italic">None detected</p>
-            )}
-          </SectionCard>
-
-          <SectionCard title="Confidence" isEmpty={!result.boq_confidence}>
-            <p className="text-sm font-medium text-gray-900 capitalize">
-              {result.boq_confidence || 'Not available'}
-            </p>
-          </SectionCard>
+          )}
         </div>
+      </div>
 
+      {/* ── Executive Summary Cards ─────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <MetricCard
+          icon={Building2}
+          label="Sector"
+          value={result.detected_sector ?? 'Not detected'}
+        />
+        <MetricCard
+          icon={BarChart3}
+          label="Confidence"
+          value={
+            overallConfidence != null
+              ? `${Math.round(overallConfidence * 100)}%`
+              : result.boq_confidence ?? 'N/A'
+          }
+          color={
+            overallConfidence != null && overallConfidence >= 0.7
+              ? 'text-emerald-700'
+              : overallConfidence != null && overallConfidence >= 0.5
+              ? 'text-amber-700'
+              : 'text-gray-700'
+          }
+        />
+        <MetricCard
+          icon={DollarSign}
+          label="BOQ Total"
+          value={hasBOQ ? formatCurrency(totalBOQ) : 'N/A'}
+        />
+        <MetricCard
+          icon={Clock}
+          label="Duration"
+          value={
+            result.detected_duration_months != null
+              ? `${result.detected_duration_months} mo`
+              : 'N/A'
+          }
+        />
+        <MetricCard
+          icon={Users}
+          label="Workforce"
+          value={
+            hasWorkforce
+              ? String(
+                  (result.detected_workforce as Record<string, { count?: number }>)
+                    .total_personnel ??
+                    Object.keys(result.detected_workforce).length,
+                )
+              : 'N/A'
+          }
+        />
+        <MetricCard
+          icon={MapPin}
+          label="Locations"
+          value={
+            result.detected_locations.length > 0
+              ? String(result.detected_locations.length)
+              : 'None'
+          }
+          subtext={
+            result.detected_locations.length > 0
+              ? result.detected_locations.slice(0, 2).join(', ') +
+                (result.detected_locations.length > 2 ? '...' : '')
+              : undefined
+          }
+        />
+      </div>
+
+      {/* ── Confidence Breakdown ────────────────────────────────── */}
+      {overallConfidence != null && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center">
+              <BarChart3 className="h-3.5 w-3.5 text-blue-600" />
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900">
+              Confidence Score
+            </h3>
+          </div>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex-1 h-2.5 rounded-full bg-gray-200 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${getConfidenceBarColor(overallConfidence)}`}
+                style={{ width: `${Math.round(overallConfidence * 100)}%` }}
+              />
+            </div>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-bold ${getConfidenceColor(overallConfidence)}`}
+            >
+              {Math.round(overallConfidence * 100)}%
+            </span>
+          </div>
+          <p className="text-xs text-gray-400">
+            Confidence scores reflect model certainty, not factual correctness.
+            Always review AI-generated outputs before use.
+          </p>
+        </div>
+      )}
+
+      {/* ── Two Column: Workforce + Schedule ────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Workforce */}
-        <SectionCard title="Workforce" isEmpty={!hasWorkforce}>
+        <div
+          className={`rounded-xl border border-gray-200 bg-white p-5 shadow-sm ${
+            !hasWorkforce ? 'opacity-60' : ''
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-8 w-8 rounded-lg bg-violet-50 flex items-center justify-center">
+              <Users className="h-4 w-4 text-violet-600" />
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900">
+              Workforce Requirements
+            </h3>
+          </div>
           {hasWorkforce ? (
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {Object.entries(result.detected_workforce).map(([key, value]) => (
-                <div key={key}>
-                  <dt className="text-xs font-medium text-gray-500 capitalize">
-                    {key.replace(/_/g, ' ')}
-                  </dt>
-                  <dd className="mt-0.5 text-sm text-gray-900">
-                    {String(value)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-        </SectionCard>
-
-        {/* Schedule */}
-        <SectionCard title="Schedule" isEmpty={!hasSchedule}>
-          {hasSchedule ? (
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {Object.entries(result.detected_schedule).map(([key, value]) => (
-                <div key={key}>
-                  <dt className="text-xs font-medium text-gray-500 capitalize">
-                    {key.replace(/_/g, ' ')}
-                  </dt>
-                  <dd className="mt-0.5 text-sm text-gray-900">
-                    {String(value)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-        </SectionCard>
-
-        {/* BOQ Items */}
-        <SectionCard title="BOQ Items" empty={!hasBOQ}>
-          {hasBOQ ? (
-            <BOQTable items={result.boq_items} />
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(result.detected_workforce)
+                .filter(([key]) => key !== 'total_personnel')
+                .map(([category, info]) => {
+                  const data = info as { count?: number; source?: string };
+                  return (
+                    <div
+                      key={category}
+                      className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                    >
+                      <p className="text-xs font-medium text-gray-500 capitalize mb-1">
+                        {category.replace(/_/g, ' ')}
+                      </p>
+                      <p className="text-lg font-bold text-gray-900">
+                        {data.count ?? '-'}
+                      </p>
+                      {data.source && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Source: {data.source}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
           ) : (
             <p className="text-sm text-gray-400 italic">Not available</p>
           )}
-        </SectionCard>
+        </div>
 
-        {/* Pricing */}
-        {result.pricing_status !== 'failed' && result.pricing_result ? (
-          <PricingSection result={result} />
-        ) : null}
-
-        {/* Pricing failure — show separately if partial_success */}
-        {result.status === 'partial_success' &&
-          (result.pricing_status === 'failed' || !result.pricing_result) && (
-            <PricingSection result={result} />
+        {/* Schedule */}
+        <div
+          className={`rounded-xl border border-gray-200 bg-white p-5 shadow-sm ${
+            !hasSchedule ? 'opacity-60' : ''
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-amber-600" />
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900">
+              Project Schedule
+            </h3>
+          </div>
+          {hasSchedule ? (
+            <dl className="space-y-2">
+              {Object.entries(result.detected_schedule).map(([key, value]) => (
+                <div key={key} className="flex justify-between py-1.5 border-b border-gray-100 last:border-0">
+                  <dt className="text-sm text-gray-500 capitalize">
+                    {key.replace(/_/g, ' ')}
+                  </dt>
+                  <dd className="text-sm font-medium text-gray-900">
+                    {String(value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="text-sm text-gray-400 italic">Not available</p>
           )}
+        </div>
+      </div>
 
-        {/* Extraction info */}
-        {(result.extraction_method || result.pipeline_version) && (
-          <div className="text-xs text-gray-400 border-t border-gray-100 pt-3">
-            {result.extraction_method && (
-              <span className="mr-4">
-                Method: {result.extraction_method}
+      {/* ── BOQ Table ───────────────────────────────────────────── */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                <FileText className="h-4 w-4 text-gray-600" />
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900">
+                Bill of Quantities
+              </h3>
+            </div>
+            {hasBOQ && (
+              <span className="text-xs text-gray-400">
+                {result.boq_items.length} item{result.boq_items.length !== 1 ? 's' : ''}
               </span>
             )}
-            {result.pipeline_version && (
-              <span>Pipeline: {result.pipeline_version}</span>
-            )}
           </div>
-        )}
+        </div>
+        <div className="px-6 py-4">
+          {hasBOQ ? (
+            <BOQTable items={result.boq_items} />
+          ) : (
+            <p className="text-sm text-gray-400 italic">No BOQ items extracted</p>
+          )}
+        </div>
       </div>
+
+      {/* ── Pricing ─────────────────────────────────────────────── */}
+      {result.pricing_status !== 'failed' && result.pricing_result ? (
+        <PricingSection result={result} />
+      ) : null}
+
+      {/* Pricing failure — show separately if partial_success */}
+      {result.status === 'partial_success' &&
+        (result.pricing_status === 'failed' || !result.pricing_result) && (
+          <PricingSection result={result} />
+        )}
+
+      {/* ── Extraction info ─────────────────────────────────────── */}
+      {(result.extraction_method || result.pipeline_version) && (
+        <div className="text-xs text-gray-400 flex flex-wrap gap-x-4 gap-y-1 px-1">
+          {result.extraction_method && (
+            <span className="inline-flex items-center gap-1">
+              <HardDrive className="h-3 w-3" />
+              Method: {result.extraction_method}
+            </span>
+          )}
+          {result.pipeline_version && (
+            <span className="inline-flex items-center gap-1">
+              <RefreshCw className="h-3 w-3" />
+              Pipeline: {result.pipeline_version}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

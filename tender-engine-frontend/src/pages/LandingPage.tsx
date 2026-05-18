@@ -5,6 +5,7 @@ import HowItWorks from '../components/landing/HowItWorks';
 import ScreenshotCard from '../components/landing/ScreenshotCard';
 import CTASection from '../components/landing/CTASection';
 import LeadCaptureForm from '../components/landing/LeadCaptureForm';
+import AppFooter from '../components/layout/AppFooter';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -109,21 +110,7 @@ export default function LandingPage() {
       <LeadCaptureForm />
 
       {/* Footer */}
-      <footer className="bg-gray-900 border-t border-gray-800">
-        <div className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded bg-blue-600 flex items-center justify-center">
-                <span className="text-xs font-bold text-white">TE</span>
-              </div>
-              <span className="text-sm text-gray-400">Tender Engine</span>
-            </div>
-            <p className="text-xs text-gray-500">
-              &copy; {new Date().getFullYear()} Tender Engine. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <AppFooter />
     </div>
   );
 }

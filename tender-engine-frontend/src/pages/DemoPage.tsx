@@ -1,6 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  BarChart3,
+  Building2,
+  Clock,
+  MapPin,
+  Users,
+  DollarSign,
+  AlertTriangle,
+  XCircle,
+  CheckCircle,
+} from 'lucide-react';
 import { demoResult, DEMO_LABEL } from '../demo/demoResult';
+import AppFooter from '../components/layout/AppFooter';
 
 type ViewMode = 'executive' | 'technical';
 
@@ -25,7 +37,7 @@ export default function DemoPage() {
   const scores = result.confidence_scores;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Demo Banner */}
       <div className="bg-amber-50 border-b border-amber-200">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
@@ -55,7 +67,7 @@ export default function DemoPage() {
       </div>
 
       {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Processed Tender Result</h1>
@@ -114,7 +126,8 @@ export default function DemoPage() {
         ) : (
           <TechnicalView result={result} />
         )}
-      </div>
+      </main>
+      <AppFooter />
     </div>
   );
 }
