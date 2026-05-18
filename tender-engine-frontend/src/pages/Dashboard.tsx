@@ -207,7 +207,7 @@ export default function Dashboard() {
         if (staleIds.length > 0) {
           console.log('[Dashboard] Cleaning up', staleIds.length, 'stale job IDs from localStorage');
           // Import and use cleanup function
-          import('../services/jobRegistry').then(({ getStoredJobIds, removeJobId }) => {
+          import('../services/jobRegistry').then(({ removeJobId }) => {
             for (const staleId of staleIds) {
               removeJobId(staleId);
             }

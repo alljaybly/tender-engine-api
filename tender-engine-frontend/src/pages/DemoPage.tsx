@@ -1,16 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  BarChart3,
-  Building2,
-  Clock,
-  MapPin,
-  Users,
-  DollarSign,
-  AlertTriangle,
-  XCircle,
-  CheckCircle,
-} from 'lucide-react';
 import { demoResult, DEMO_LABEL } from '../demo/demoResult';
 import AppFooter from '../components/layout/AppFooter';
 

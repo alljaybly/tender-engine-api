@@ -61,13 +61,6 @@ function getConfidenceBarColor(value: number | null | undefined): string {
   return 'bg-red-500';
 }
 
-function getConfidenceLabel(value: number | null | undefined): string {
-  if (value == null) return 'N/A';
-  if (value >= 0.9) return 'High';
-  if (value >= 0.7) return 'Medium';
-  return 'Low';
-}
-
 function formatStageName(stage: string): string {
   return stage.replace(/_/g, ' ');
 }
@@ -248,42 +241,6 @@ function MetricCard({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Confidence Badge                                                  */
-/* ------------------------------------------------------------------ */
-
-function ConfidenceBadge({
-  label,
-  value,
-  showBar = true,
-}: {
-  label: string;
-  value: number | null | undefined;
-  showBar?: boolean;
-}) {
-  const pct = value != null ? `${Math.round(value * 100)}%` : 'N/A';
-  return (
-    <div className="flex items-center justify-between py-1.5">
-      <span className="text-sm text-gray-600">{label}</span>
-      <div className="flex items-center gap-2">
-        {showBar && value != null && (
-          <div className="w-16 h-1.5 rounded-full bg-gray-200 overflow-hidden">
-            <div
-              className={`h-full rounded-full ${getConfidenceBarColor(value)}`}
-              style={{ width: `${Math.round(value * 100)}%` }}
-            />
-          </div>
-        )}
-        <span
-          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${getConfidenceColor(value)}`}
-        >
-          {pct}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  Stage Badges                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -420,7 +377,6 @@ function PricingSection({ result }: { result: ProcessingResult }) {
 
   // Identify the total amount (last field usually)
   const totalKey = rows.length > 0 ? rows[rows.length - 1][0] : null;
-  const totalValue = totalKey ? pr[totalKey] : null;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
