@@ -22,7 +22,8 @@ import type {
   RetryResponse,
 } from '../types/process';
 
-const API_BASE_URL = '/api';
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 /**
  * Get auth headers for multipart/form-data uploads.
@@ -48,7 +49,7 @@ export async function uploadTender(
   file: File,
   onProgress?: (percent: number) => void,
 ): Promise<ProcessUploadResponse> {
-  const url = `${API_BASE_URL}/process/upload`;
+  const url = `${API_BASE}/api/process/upload`;
 
   const formData = new FormData();
   formData.append('file', file);
@@ -129,7 +130,7 @@ export async function uploadTender(
 export async function getJobStatus(
   jobId: string,
 ): Promise<ProcessingJobStatus> {
-  const url = `${API_BASE_URL}/process/status/${encodeURIComponent(jobId)}`;
+  const url = `${API_BASE}/api/process/status/${encodeURIComponent(jobId)}`;
 
   const token = getStoredToken();
   const headers: Record<string, string> = {
@@ -179,7 +180,7 @@ export async function getJobStatus(
 export async function getJobResult(
   jobId: string,
 ): Promise<ProcessingResult> {
-  const url = `${API_BASE_URL}/process/result/${encodeURIComponent(jobId)}`;
+  const url = `${API_BASE}/api/process/result/${encodeURIComponent(jobId)}`;
 
   const token = getStoredToken();
   const headers: Record<string, string> = {
@@ -244,7 +245,7 @@ export async function getJobResult(
  * and has_pricing from the tender_results table.
  */
 export async function getJobHistory(): Promise<ProcessingHistoryItem[]> {
-  const url = `${API_BASE_URL}/process/history`;
+  const url = `${API_BASE}/api/process/history`;
 
   const token = getStoredToken();
   const headers: Record<string, string> = {
@@ -302,7 +303,7 @@ export async function retryJob(
   jobId: string,
   stages: string[],
 ): Promise<RetryResponse> {
-  const url = `${API_BASE_URL}/process/retry/${encodeURIComponent(jobId)}`;
+  const url = `${API_BASE}/api/process/retry/${encodeURIComponent(jobId)}`;
 
   const token = getStoredToken();
   const headers: Record<string, string> = {
@@ -362,7 +363,7 @@ export async function retryJob(
  */
 export function downloadExcelExport(jobId: string, filename?: string): Promise<void> {
   const token = getStoredToken();
-  const url = `/api/process/export/excel/${encodeURIComponent(jobId)}`;
+  const url = `${API_BASE}/api/process/export/excel/${encodeURIComponent(jobId)}`;
 
   return fetch(url, {
     method: 'GET',
@@ -402,7 +403,7 @@ export function downloadExcelExport(jobId: string, filename?: string): Promise<v
  */
 export function downloadPdfReport(jobId: string, filename?: string): Promise<void> {
   const token = getStoredToken();
-  const url = `/api/process/export/pdf/${encodeURIComponent(jobId)}`;
+  const url = `${API_BASE}/api/process/export/pdf/${encodeURIComponent(jobId)}`;
 
   return fetch(url, {
     method: 'GET',

@@ -4,9 +4,13 @@
  * - Automatically injects JWT Bearer token from localStorage
  * - Handles JSON serialization/deserialization
  * - Provides typed error handling
+ * - Uses VITE_API_BASE_URL env var for production API URL
  */
 
-const API_BASE_URL = '/api';
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+console.log('API BASE URL:', API_BASE);
 
 export interface ApiError {
   detail?: string;
@@ -46,7 +50,7 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${API_BASE}${endpoint}`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
