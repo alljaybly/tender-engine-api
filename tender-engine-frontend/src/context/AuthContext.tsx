@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { AuthContextType, User } from '../types/auth';
 import * as authService from '../services/auth';
-import { clearToken, getStoredToken } from '../services/api';
+import { clearToken, getStoredToken, isTokenExpired } from '../services/api';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -19,18 +19,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Restore auth state on mount (page refresh)
   useEffect(() => {
     const token = getStoredToken();
+
+    // No token stored — not authenticated
     if (!token) {
       setIsLoading(false);
       return;
     }
 
+    // Preemptively check token expiry before making a server call.
+    // This avoids an unnecessary 401 request for expired tokens.
+    if (isTokenExpired(token)) {
+      console.log('[AuthContext] Stored token is expired — clearing session');
+      clearToken();
+      setIsLoading(false);
+      return;
+    }
+
+    // Token exists and is not expired — verify with backend
     authService
       .getCurrentUser()
       .then((userData) => {
         setUser(userData);
       })
       .catch(() => {
-        // Token invalid or expired — clear it
+        // Token invalid or expired (silently cleared by backend rejection) — clear it
         clearToken();
         setUser(null);
       })

@@ -30,20 +30,62 @@ export class ApiRequestError extends Error {
   }
 }
 
+const TOKEN_KEY = 'access_token';
+
 function getToken(): string | null {
-  return localStorage.getItem('access_token');
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem('access_token', token);
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    console.warn('[API] Failed to store token — localStorage may be full');
+  }
 }
 
 export function clearToken(): void {
-  localStorage.removeItem('access_token');
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    console.warn('[API] Failed to clear token');
+  }
 }
 
 export function getStoredToken(): string | null {
   return getToken();
+}
+
+/**
+ * Decode the payload of a JWT token without verification (client-side only).
+ * Returns null if the token is malformed.
+ * Useful for checking token expiry before making server calls.
+ */
+export function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1];
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if a JWT token is expired based on its 'exp' claim.
+ * Returns true if the token is expired or malformed.
+ */
+export function isTokenExpired(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload || !payload.exp) return true;
+  const expMs = (payload.exp as number) * 1000;
+  return Date.now() >= expMs;
 }
 
 async function request<T>(
