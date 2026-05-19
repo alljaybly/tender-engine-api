@@ -20,8 +20,7 @@ app = FastAPI(
 # CORS CONFIGURATION
 # -------------------------------
 origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    "http://localhost:5173",    
     "http://localhost:3000",
     "https://tender-engine-api.netlify.app",
 ]
@@ -60,7 +59,7 @@ async def on_startup():
 # -------------------------------
 # HEALTH ENDPOINT (outside /api prefix, public)
 # -------------------------------
-@app.get("/health")
+@app.get("/api/health")
 async def root_health():
     return JSONResponse({'status': 'ok', 'services': ['extract', 'validate', 'price', 'doc']})
 
