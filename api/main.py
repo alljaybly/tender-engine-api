@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from dotenv import load_dotenv
@@ -58,6 +58,13 @@ async def on_startup():
     logger.info("[DB] Database initialized on startup")
 
 # -------------------------------
+# HEALTH ENDPOINT (outside /api prefix, public)
+# -------------------------------
+@app.get("/health")
+async def root_health():
+    return JSONResponse({'status': 'ok', 'services': ['extract', 'validate', 'price', 'doc']})
+
+# -------------------------------
 # OPENAPI SECURITY (supports both ApiKey and Bearer JWT)
 # -------------------------------
 original_openapi = app.openapi
@@ -82,11 +89,6 @@ def custom_openapi():
         }
     }
     openapi_schema["security"] = [{"BearerAuth": []}, {"ApiKeyAuth": []}]
-    # Remap operation-level security: FastAPI's original_openapi() auto-generates
-    # per-operation security references (e.g. "HTTPBearer") from Depends(HTTPBearer).
-    # After we replace securitySchemes above, those internal references become
-    # dangling.  Replace any unrecognised scheme with BearerAuth so Swagger
-    # attaches the Authorize token.
     for path, methods in openapi_schema.get("paths", {}).items():
         for method in methods.values():
             op_security = method.get("security")
@@ -94,7 +96,6 @@ def custom_openapi():
                 for sec_req in op_security:
                     for scheme_name in list(sec_req.keys()):
                         if scheme_name not in registered_schemes:
-                            # Remap auto-generated scheme name to BearerAuth
                             sec_req["BearerAuth"] = sec_req.pop(scheme_name)
     app.openapi_schema = openapi_schema
     return app.openapi_schema
@@ -140,23 +141,28 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # -------------------------------
 # AUTH MIDDLEWARE (dual auth: x-api-key OR Bearer JWT)
 # -------------------------------
+PUBLIC_PATHS = [
+    "/",
+    "/static",
+    "/docs",
+    "/redoc",
+    "/openapi",
+    "/health",
+    "/api/health",
+    "/favicon",
+    "/api/leads",
+    "/api/auth",
+]
+
 @app.middleware('http')
 async def require_api_key(request: Request, call_next):
 
     path = request.url.path
 
     # ✅ PUBLIC ROUTES (NO AUTH REQUIRED)
-    if (
-        path == "/" or
-        path.startswith("/static") or
-        path.startswith("/docs") or
-        path.startswith("/redoc") or
-        path.startswith("/openapi") or
-        path.startswith("/health") or
-        path.startswith("/favicon") or
-        path == "/api/leads"
-    ):
-        return await call_next(request)
+    for public_path in PUBLIC_PATHS:
+        if path == public_path or path.startswith(public_path.rstrip('/') + '/'):
+            return await call_next(request)
 
     # 🚀 DEV BYPASS (so YOU are never blocked)
     api_key = request.headers.get('x-api-key')
@@ -215,13 +221,6 @@ async def require_api_key(request: Request, call_next):
         return await call_next(request)
 
     # 🔐 NO AUTHENTICATION PROVIDED
-    # Auth routes (register/login) are public -> handled below as they start with /api/auth
-    if path.startswith("/api/auth"):
-        # Allow auth endpoints to pass without authentication
-        # (they handle their own auth via the login/register payloads)
-        request.state.user = None
-        return await call_next(request)
-
     return error_response('unauthorized', 'Authentication required. Provide x-api-key header or Bearer token.', 401)
 
 # -------------------------------
