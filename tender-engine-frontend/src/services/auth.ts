@@ -33,9 +33,12 @@ export interface UserResponse {
 /**
  * Login with email and password.
  * Stores JWT token in localStorage on success.
+ *
+ * NOTE: Endpoint paths must include /api prefix since the backend router
+ * is mounted at /api (see api/main.py: app.include_router(api_router, prefix="/api"))
  */
 export async function login(credentials: LoginRequest): Promise<TokenResponse> {
-  const data = await api.post<TokenResponse>('/auth/login', credentials);
+  const data = await api.post<TokenResponse>('/api/auth/login', credentials);
   setToken(data.access_token);
   return data;
 }
@@ -47,7 +50,7 @@ export async function login(credentials: LoginRequest): Promise<TokenResponse> {
 export async function register(
   payload: RegisterRequest,
 ): Promise<TokenResponse> {
-  const data = await api.post<TokenResponse>('/auth/register', payload);
+  const data = await api.post<TokenResponse>('/api/auth/register', payload);
   setToken(data.access_token);
   return data;
 }
@@ -57,7 +60,7 @@ export async function register(
  * Requires a valid JWT token in localStorage.
  */
 export async function getCurrentUser(): Promise<UserResponse> {
-  return api.get<UserResponse>('/auth/me');
+  return api.get<UserResponse>('/api/auth/me');
 }
 
 /**
