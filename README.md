@@ -1,3 +1,11 @@
+<p align="center">
+  <img src="screenshots/banner.png" width="100%" />
+</p>
+<h1 align="center">Tender Engine AI</h1>
+
+<p align="center">
+AI-powered tender extraction, BOQ intelligence, pricing analysis, and executive reporting.
+</p>
 # Tender Engine AI
 
 **Transform tender documents into structured pricing intelligence.**
@@ -480,9 +488,9 @@ Frontend:
 Screenshot coming soon
 ```
 
-### Dashboard
+### Executive Dashboard
 ```
-Screenshot coming soon
+![Executive Dashboard](screenshots/dashboard.png)
 ```
 
 ### Processing Results
@@ -490,9 +498,9 @@ Screenshot coming soon
 Screenshot coming soon
 ```
 
-### Pricing Breakdown
+### Detailed BOQ & Pricing
 ```
-Screenshot coming soon
+![Detailed BOQ & Pricing](screenshots/boq-pricing.png)
 ```
 
 ### PDF Export
