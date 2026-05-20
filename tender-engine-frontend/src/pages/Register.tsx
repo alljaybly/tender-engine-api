@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiRequestError } from '../services/api';
 import AppFooter from '../components/layout/AppFooter';
+import BetaBanner from '../components/layout/BetaBanner';
 
 export default function Register() {
   const { register, isAuthenticated, isLoading } = useAuth();
@@ -63,6 +64,7 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <BetaBanner />
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">

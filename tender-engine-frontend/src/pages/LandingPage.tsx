@@ -6,12 +6,16 @@ import ScreenshotCard from '../components/landing/ScreenshotCard';
 import CTASection from '../components/landing/CTASection';
 import LeadCaptureForm from '../components/landing/LeadCaptureForm';
 import AppFooter from '../components/layout/AppFooter';
+import BetaBanner from '../components/layout/BetaBanner';
 
 export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Beta Warning Banner */}
+      <BetaBanner />
+
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
@@ -54,10 +58,12 @@ export default function LandingPage() {
             <ScreenshotCard
               title="Executive Dashboard"
               description="View a clear, confidence-scored breakdown of every tender extraction. See completed stages, warnings, and failed items at a glance."
+              imageSrc="/screenshots/Executive Dashboard.jpg"
             />
             <ScreenshotCard
               title="Detailed BOQ & Pricing"
               description="Extracted BOQ items with rates, amounts, and full pricing breakdown — all with transparent confidence scores for every data point."
+              imageSrc="/screenshots/Detailed BOQ & Pricing.jpg"
               align="right"
             />
           </div>
