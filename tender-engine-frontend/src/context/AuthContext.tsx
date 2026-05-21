@@ -4,51 +4,141 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react';
 import type { AuthContextType, User } from '../types/auth';
 import * as authService from '../services/auth';
-import { clearToken, getStoredToken, isTokenExpired } from '../services/api';
+import { clearToken, getStoredToken, isTokenExpired, ApiRequestError } from '../services/api';
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+/**
+ * Maximum number of retries for auth restoration on mount.
+ * This handles Render cold starts where the backend takes ~30s to wake up.
+ * We retry with backoff instead of immediately clearing the token.
+ */
+const MAX_AUTH_RETRIES = 3;
+
+/**
+ * Base delay in ms between auth restoration retries.
+ * Actual delay = BASE_RETRY_DELAY * (attempt ^ 2) — exponential backoff.
+ */
+const BASE_RETRY_DELAY = 2000;
+
+/**
+ * Wait this long before the first auth/me call after detecting a valid stored token.
+ * This gives the Render backend a head start to wake up before we even try.
+ */
+const INITIAL_DEFER_MS = 1500;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const mountedRef = useRef(true);
 
-  // Restore auth state on mount (page refresh)
+  // ── Restore auth state on mount (page refresh) ───────────────────
+  // Handles Render cold start gracefully: retries /auth/me with
+  // exponential backoff before concluding the token is invalid.
   useEffect(() => {
-    const token = getStoredToken();
+    mountedRef.current = true;
 
-    // No token stored — not authenticated
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
+    async function restoreAuth() {
+      const token = getStoredToken();
 
-    // Preemptively check token expiry before making a server call.
-    // This avoids an unnecessary 401 request for expired tokens.
-    if (isTokenExpired(token)) {
-      console.log('[AuthContext] Stored token is expired — clearing session');
-      clearToken();
-      setIsLoading(false);
-      return;
-    }
-
-    // Token exists and is not expired — verify with backend
-    authService
-      .getCurrentUser()
-      .then((userData) => {
-        setUser(userData);
-      })
-      .catch(() => {
-        // Token invalid or expired (silently cleared by backend rejection) — clear it
-        clearToken();
-        setUser(null);
-      })
-      .finally(() => {
+      // No token stored — not authenticated
+      if (!token) {
         setIsLoading(false);
-      });
+        return;
+      }
+
+      // Preemptively check token expiry before making a server call.
+      if (isTokenExpired(token)) {
+        console.log('[AuthContext] Stored token is expired — clearing session');
+        clearToken();
+        setIsLoading(false);
+        return;
+      }
+
+      // ── Token exists and is not expired — verify with backend ──
+      // We use retry logic to handle Render cold starts gracefully.
+      // The backend may take 15-30s to wake up on first request.
+      // Instead of immediately clearing the token on failure, we
+      // retry up to MAX_AUTH_RETRIES times with exponential backoff.
+      for (let attempt = 0; attempt <= MAX_AUTH_RETRIES; attempt++) {
+        if (!mountedRef.current) return;
+
+        try {
+          // On first attempt, add a short initial defer to give Render
+          // a head start on waking up before we even make the request.
+          if (attempt === 0) {
+            await new Promise((r) => setTimeout(r, INITIAL_DEFER_MS));
+            if (!mountedRef.current) return;
+          }
+
+          const userData = await authService.getCurrentUser();
+          
+          if (mountedRef.current) {
+            setUser(userData);
+            setIsLoading(false);
+          }
+          return; // Success — exit retry loop
+        } catch (err) {
+          const isNetworkError =
+            err instanceof ApiRequestError &&
+            (err.status === 0 || err.code === 'network_error');
+          
+          const isServerError =
+            err instanceof ApiRequestError && err.status >= 500;
+          
+          const isAuthError =
+            err instanceof ApiRequestError && err.status === 401;
+
+          // If it's a confirmed auth error (401), clear immediately
+          if (isAuthError) {
+            console.log('[AuthContext] Stored token rejected by backend — clearing session');
+            if (mountedRef.current) {
+              clearToken();
+              setUser(null);
+              setIsLoading(false);
+            }
+            return;
+          }
+
+          // For network errors (cold start) or server errors, retry
+          if ((isNetworkError || isServerError) && attempt < MAX_AUTH_RETRIES) {
+            const delay = BASE_RETRY_DELAY * ((attempt + 1) ** 2);
+            console.log(
+              `[AuthContext] Auth restoration attempt ${attempt + 1}/${MAX_AUTH_RETRIES} failed ` +
+              `(status=${err instanceof ApiRequestError ? err.status : 'unknown'}) — ` +
+              `retrying in ${delay}ms`,
+            );
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+
+          // Non-retryable error, or max retries exhausted — clear token
+          console.log('[AuthContext] Auth restoration failed after retries — clearing session');
+          if (mountedRef.current) {
+            clearToken();
+            setUser(null);
+            setIsLoading(false);
+          }
+          return;
+        }
+      }
+
+      // Should not reach here, but safety net
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
+    }
+
+    restoreAuth();
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
