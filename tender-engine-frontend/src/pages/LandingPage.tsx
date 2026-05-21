@@ -58,12 +58,12 @@ export default function LandingPage() {
             <ScreenshotCard
               title="Executive Dashboard"
               description="View a clear, confidence-scored breakdown of every tender extraction. See completed stages, warnings, and failed items at a glance."
-              imageSrc="/screenshots/Executive Dashboard.jpg"
+              imageSrc="/images/executive-dashboard.png"
             />
             <ScreenshotCard
               title="Detailed BOQ & Pricing"
               description="Extracted BOQ items with rates, amounts, and full pricing breakdown — all with transparent confidence scores for every data point."
-              imageSrc="/screenshots/Detailed BOQ & Pricing.jpg"
+              imageSrc="/images/boq-pricing-extract.png"
               align="right"
             />
           </div>
