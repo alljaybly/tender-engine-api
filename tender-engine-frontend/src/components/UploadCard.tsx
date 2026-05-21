@@ -129,6 +129,16 @@ export default function UploadCard({ onUploadSuccess }: UploadCardProps) {
       </div>
 
       <div className="px-5 py-4 space-y-4">
+        {/* Cold start note for free Render tier */}
+        <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-3.5 py-2.5">
+          <svg className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            <span className="font-semibold">Free Render cold start:</span> First request may take <span className="font-semibold">~30s</span> while the backend wakes up. Processing then runs normally.
+          </p>
+        </div>
+
         {/* File input */}
         <div>
           <input

@@ -434,33 +434,74 @@ export default function Dashboard() {
 
   function renderLoadingSkeleton() {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-full max-w-2xl px-4">
-          {/* Header skeleton */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 animate-pulse">
-            <div className="px-6 py-4 flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="h-6 bg-gray-200 rounded w-40" />
-                <div className="h-3 bg-gray-200 rounded w-56" />
+      <div className="min-h-screen bg-gray-50">
+        {/* Header skeleton */}
+        <div className="bg-white border-b border-gray-200 shadow-sm mb-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-gray-200 rounded" />
+                <div className="space-y-1.5">
+                  <div className="h-4 bg-gray-200 rounded w-28" />
+                  <div className="h-3 bg-gray-200 rounded w-36" />
+                </div>
               </div>
-              <div className="h-4 bg-gray-200 rounded w-32" />
+              <div className="flex items-center gap-3">
+                <div className="h-8 bg-gray-200 rounded-lg w-40" />
+                <div className="h-8 bg-gray-200 rounded-lg w-20" />
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Upload skeleton */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 animate-pulse">
-            <div className="px-6 py-5 border-b border-gray-200">
-              <div className="h-5 bg-gray-200 rounded w-28 mb-1" />
-              <div className="h-3 bg-gray-200 rounded w-64" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left column skeleton */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm animate-pulse">
+                <div className="px-5 py-4 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 bg-gray-200 rounded-lg" />
+                    <div className="space-y-1">
+                      <div className="h-4 bg-gray-200 rounded w-24" />
+                      <div className="h-3 bg-gray-200 rounded w-32" />
+                    </div>
+                  </div>
+                </div>
+                <div className="px-5 py-4 space-y-4">
+                  <div className="h-10 bg-gray-200 rounded w-full" />
+                  <div className="h-9 bg-gray-200 rounded w-36" />
+                </div>
+              </div>
+
+              <HistoryLoadingSkeleton />
             </div>
-            <div className="px-6 py-4 space-y-3">
-              <div className="h-10 bg-gray-200 rounded w-full" />
-              <div className="h-9 bg-gray-200 rounded w-36" />
+
+            {/* Right column skeleton */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm animate-pulse">
+                <div className="px-6 py-16 text-center space-y-4">
+                  <div className="h-16 w-16 bg-gray-200 rounded-full mx-auto" />
+                  <div className="h-5 bg-gray-200 rounded w-64 mx-auto" />
+                  <div className="h-4 bg-gray-200 rounded w-80 mx-auto" />
+                  <div className="flex justify-center gap-8 pt-2">
+                    <div className="space-y-2">
+                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto" />
+                      <div className="h-3 bg-gray-200 rounded w-20 mx-auto" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto" />
+                      <div className="h-3 bg-gray-200 rounded w-20 mx-auto" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-3 bg-gray-200 rounded w-16 mx-auto" />
+                      <div className="h-3 bg-gray-200 rounded w-20 mx-auto" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* History skeleton */}
-          <HistoryLoadingSkeleton />
         </div>
       </div>
     );
@@ -505,25 +546,42 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── Header ───────────────────────────────────────────────── */}
-        <header className="bg-white border-b border-gray-200">
+      {/* ── Header ───────────────────────────────────────────────── */}
+        <header className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-3">
-                <h1 className="text-xl font-bold text-gray-900">
-                  Tender Engine
-                </h1>
-                <span className="hidden sm:inline text-sm text-gray-400">
-                  Processing Dashboard
-                </span>
+                <img
+                  src="/images/logo.png"
+                  alt="Tender Engine"
+                  className="h-8 w-auto"
+                />
+                <div className="hidden sm:block">
+                  <h1 className="text-base font-bold text-gray-900">
+                    Tender Engine
+                  </h1>
+                  <p className="text-xs text-gray-400 leading-tight">
+                    Processing Dashboard
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-600">{user?.email}</span>
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5 border border-gray-100">
+                  <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center">
+                    <svg className="h-3.5 w-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                  </div>
+                  <span className="text-sm text-gray-600 font-medium">{user?.email}</span>
+                </div>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors border border-red-100"
                 >
-                  Logout
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                  </svg>
+                  <span className="hidden sm:inline">Logout</span>
                 </button>
               </div>
             </div>
@@ -765,12 +823,12 @@ export default function Dashboard() {
                     <h2 className="text-xl font-semibold text-gray-700 mb-2">
                       Tender Processing Dashboard
                     </h2>
-                    <p className="text-gray-500 max-w-md mx-auto mb-6">
+                    <p className="text-gray-500 max-w-md mx-auto mb-4">
                       Upload a tender document to get started. Once processed,
                       you'll see extracted data including sector, duration,
                       locations, BOQ items, and pricing.
                     </p>
-                    <div className="flex justify-center gap-8 text-sm text-gray-400">
+                    <div className="flex justify-center gap-8 mb-6 text-sm text-gray-400">
                       <div className="text-center">
                         <p className="font-medium text-gray-600">Step 1</p>
                         <p>Upload document</p>
@@ -783,6 +841,14 @@ export default function Dashboard() {
                         <p className="font-medium text-gray-600">Step 3</p>
                         <p>View results</p>
                       </div>
+                    </div>
+                    <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-left max-w-md mx-auto">
+                      <svg className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                      </svg>
+                      <p className="text-xs text-amber-700 leading-relaxed">
+                        <span className="font-semibold">Heads up:</span> This app runs on free Render infrastructure. The first request each session may take <span className="font-semibold">~30s</span> for the backend to wake up — after that, processing runs at normal speed.
+                      </p>
                     </div>
                   </div>
                 </div>
