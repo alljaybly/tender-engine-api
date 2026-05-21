@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import DemoPage from './pages/DemoPage';
+import ForProcurement from './pages/ForProcurement';
 import TermsPage from './pages/legal/TermsPage';
 import PrivacyPage from './pages/legal/PrivacyPage';
 
@@ -20,6 +21,9 @@ function App() {
 
           {/* Demo experience — no auth required */}
           <Route path="/demo" element={<DemoPage />} />
+
+          {/* Procurement page */}
+          <Route path="/for-procurement" element={<ForProcurement />} />
 
           {/* Legal pages */}
           <Route path="/terms" element={<TermsPage />} />

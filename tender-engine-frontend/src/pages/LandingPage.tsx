@@ -27,6 +27,20 @@ export default function LandingPage() {
             />
             <span className="text-lg font-semibold text-gray-900">Tender Engine</span>
           </div>
+          <div className="hidden sm:flex items-center gap-6">
+            <button
+              onClick={() => navigate('/demo')}
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Demo
+            </button>
+            <button
+              onClick={() => navigate('/for-procurement')}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              For Government
+            </button>
+          </div>
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/login')}
@@ -100,6 +114,38 @@ export default function LandingPage() {
               <div className="text-2xl mb-3">🔄</div>
               <h3 className="text-sm font-semibold text-gray-900">Retry Architecture</h3>
               <p className="mt-1 text-xs text-gray-600">Retry only the stages that failed — not the entire document.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Procurement Section */}
+      <section className="bg-white py-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-xs font-semibold text-blue-700 mb-6">
+              For Government & SOEs
+            </div>
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Help Procurement Offices Create{' '}
+              <span className="text-blue-600">Clearer Tenders</span>
+            </h2>
+            <p className="mt-4 text-lg leading-8 text-gray-600">
+              Upload draft tenders and get an AI-powered{' '}
+              <span className="font-semibold text-gray-900">Tender Health Report</span>{' '}
+              that flags ambiguous BOQ items, unclear specifications, and risky clauses — before you publish.
+              Free pilot programs available for government departments and SOEs.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                onClick={() => navigate('/for-procurement')}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-all hover:shadow-md active:scale-[0.98]"
+              >
+                Learn More
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
