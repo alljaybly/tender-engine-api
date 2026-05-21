@@ -19,10 +19,12 @@ export default function LandingPage() {
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <span className="text-sm font-bold text-white">TE</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <img
+              src="/images/logo.png"
+              alt="Tender Engine"
+              className="h-9 w-auto"
+            />
             <span className="text-lg font-semibold text-gray-900">Tender Engine</span>
           </div>
           <div className="flex items-center gap-4">
