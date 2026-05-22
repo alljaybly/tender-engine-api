@@ -40,12 +40,14 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AppFooter from '../components/layout/AppFooter';
+import BackendWakingBanner from '../components/layout/BackendWakingBanner';
+import { useBackendHealth } from '../hooks/useBackendHealth';
 import UploadCard from '../components/UploadCard';
 import TenderHistory from '../components/TenderHistory';
 import type { HistoryItem } from '../components/TenderHistory';
 import ResultViewer from '../components/ResultViewer';
 import { getJobResult, getJobHistory } from '../services/process';
-import { saveJobId, getStoredJobIds } from '../services/jobRegistry';
+import { saveJobId, getStoredJobIds, removeJobId } from '../services/jobRegistry';
 import {
   startPolling,
   stopAllPolling,
@@ -107,6 +109,7 @@ function isActiveStatus(status: string): boolean {
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { isChecking } = useBackendHealth();
 
   // ── History loading state ──────────────────────────────────────────
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -206,12 +209,9 @@ export default function Dashboard() {
         const staleIds = storedIds.filter((id) => !backendIds.has(id));
         if (staleIds.length > 0) {
           console.log('[Dashboard] Cleaning up', staleIds.length, 'stale job IDs from localStorage');
-          // Import and use cleanup function
-          import('../services/jobRegistry').then(({ removeJobId }) => {
-            for (const staleId of staleIds) {
-              removeJobId(staleId);
-            }
-          });
+          for (const staleId of staleIds) {
+            removeJobId(staleId);
+          }
         }
       } catch (err: unknown) {
         console.error('[Dashboard] Failed to load history:', err);
@@ -435,6 +435,9 @@ export default function Dashboard() {
   function renderLoadingSkeleton() {
     return (
       <div className="min-h-screen bg-gray-50">
+        {/* ── Backend waking-up banner (free-tier cold start) ──────────── */}
+        <BackendWakingBanner isChecking={isChecking} />
+
         {/* Header skeleton */}
         <div className="bg-white border-b border-gray-200 shadow-sm mb-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -522,6 +525,9 @@ export default function Dashboard() {
 
     return (
       <div className="min-h-screen bg-gray-50">
+        {/* ── Backend waking-up banner (free-tier cold start) ──────────── */}
+        <BackendWakingBanner isChecking={isChecking} />
+
         {/* ── Reconciliation error banner ─────────────────────────────── */}
         {historyError && (
           <div className="bg-amber-50 border-b border-amber-200">

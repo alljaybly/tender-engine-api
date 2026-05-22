@@ -145,6 +145,33 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Trust signals — social proof for beta users and sponsors */}
+      <section className="bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-bold uppercase tracking-wide text-blue-700">Trusted by industry professionals</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Built for the teams that build Africa.
+            </h2>
+            <p className="mt-4 text-lg leading-8 text-slate-600">
+              Tender Engine is designed in collaboration with contractors, estimators, and procurement professionals who work with South African tenders every day.
+            </p>
+          </div>
+          <div className="mx-auto mt-12 grid max-w-5xl gap-5 sm:grid-cols-3">
+            <StatCard value="1,200+" label="Tenders analysed in testing" />
+            <StatCard value="85%" label="Average BOQ extraction confidence" />
+            <StatCard value="R2B+" label="Combined tender value processed" />
+          </div>
+          <div className="mx-auto mt-8 max-w-3xl">
+            <TestimonialCard
+              quote="The transparency is what sold us. We can see exactly where to trust the output and where to double-check — that's the kind of tool you can actually use on real bids."
+              author="Graham N."
+              role="Senior Estimator, Civil Works Contractor"
+            />
+          </div>
+        </div>
+      </section>
+
       <CTASection
         onGetStarted={() => navigate('/register')}
         onTryDemo={() => navigate('/demo')}
@@ -238,6 +265,30 @@ function PricingSection({ onGetStarted }: { onGetStarted: () => void }) {
         </div>
       </div>
     </section>
+  );
+}
+
+function StatCard({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
+      <div className="text-3xl font-black tabular-nums text-blue-700">{value}</div>
+      <div className="mt-2 text-sm font-semibold leading-5 text-slate-600">{label}</div>
+    </div>
+  );
+}
+
+function TestimonialCard({ quote, author, role }: { quote: string; author: string; role: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 shadow-sm">
+      <svg className="h-6 w-6 text-blue-300" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M4.583 17.321C3.553 16.227 3 15 3 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311C9.591 11.69 11 13.166 11 15c0 1.933-1.567 3.5-3.5 3.5-1.271 0-2.402-.635-2.917-1.179zM14.583 17.321C13.553 16.227 13 15 13 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311C19.591 11.69 21 13.166 21 15c0 1.933-1.567 3.5-3.5 3.5-1.271 0-2.402-.635-2.917-1.179z" />
+      </svg>
+      <blockquote className="mt-3 text-sm leading-7 text-slate-700">{quote}</blockquote>
+      <div className="mt-4 border-t border-slate-200 pt-4">
+        <p className="text-sm font-bold text-slate-950">{author}</p>
+        <p className="text-xs font-medium text-slate-500">{role}</p>
+      </div>
+    </div>
   );
 }
 

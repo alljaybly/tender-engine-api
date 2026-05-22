@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+/*
+ * Scroll offset for hash-anchor sections — accounts for sticky header (~64px) + beta banner (~40px)
+ */
+html {
+  scroll-behavior: smooth;
+}
+
+[id] {
+  scroll-margin-top: 112px;
+}

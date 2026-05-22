@@ -3,9 +3,12 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiRequestError } from '../services/api';
 import AppFooter from '../components/layout/AppFooter';
+import BackendWakingBanner from '../components/layout/BackendWakingBanner';
+import { useBackendHealth } from '../hooks/useBackendHealth';
 import BetaBanner from '../components/layout/BetaBanner';
 
 export default function Login() {
+  const { isChecking } = useBackendHealth();
   const { login, isAuthenticated, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,6 +48,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <BetaBanner />
+      <BackendWakingBanner isChecking={isChecking} />
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">

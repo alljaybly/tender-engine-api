@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useCallback, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 
 const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'Demo', href: '/demo', prominent: true },
-  { label: 'For Contractors', href: '/#contractors' },
+  { label: 'For Contractors', href: '/#contractors', hash: 'contractors' },
   { label: 'For Procurement Offices', href: '/for-procurement' },
-  { label: 'Pricing', href: '/#pricing' },
+  { label: 'Pricing', href: '/#pricing', hash: 'pricing' },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -19,6 +19,30 @@ function isActive(pathname: string, href: string): boolean {
 export default function PublicHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const handleNavClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, _href: string, hash?: string) => {
+    if (!hash) return; // No interception needed for non-hash links
+
+    e.preventDefault();
+
+    if (pathname === '/') {
+      // Already on the landing page — just scroll
+      const el = document.getElementById(hash);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+        window.history.replaceState(null, '', `/#${hash}`);
+      }
+    } else {
+      // Navigate to landing page, then scroll after mount
+      navigate('/');
+      setTimeout(() => {
+        const el = document.getElementById(hash);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+    setMobileOpen(false);
+  }, [pathname, navigate]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
@@ -36,6 +60,7 @@ export default function PublicHeader() {
             <a
               key={link.label}
               href={link.href}
+              onClick={(e) => handleNavClick(e, link.href, link.hash)}
               className={
                 link.prominent
                   ? 'rounded-md bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700 ring-1 ring-blue-200 transition hover:bg-blue-100'
@@ -72,20 +97,20 @@ export default function PublicHeader() {
       {mobileOpen && (
         <div className="border-t border-slate-200 bg-white px-4 py-3 shadow-sm lg:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-1">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className={
-                  link.prominent
-                    ? 'rounded-md bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700'
-                    : 'rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'
-                }
-              >
-                {link.label}
-              </a>
-            ))}
+          {navLinks.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              onClick={(e) => handleNavClick(e, link.href, link.hash)}
+              className={
+                link.prominent
+                  ? 'rounded-md bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700'
+                  : 'rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'
+              }
+            >
+              {link.label}
+            </a>
+          ))}
             <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
               <Link to="/login" onClick={() => setMobileOpen(false)} className="rounded-md border border-slate-200 px-3 py-2 text-center text-sm font-bold text-slate-700">
                 Login

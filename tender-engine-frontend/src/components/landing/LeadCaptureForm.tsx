@@ -53,7 +53,7 @@ export default function LeadCaptureForm() {
 
   if (status === 'success') {
     return (
-      <section className="bg-blue-600 py-24">
+      <section className="bg-blue-700 py-24">
         <div className="mx-auto max-w-2xl text-center px-6">
           <div className="rounded-xl bg-white/10 p-8 backdrop-blur-sm">
             <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-emerald-300" />
@@ -66,12 +66,12 @@ export default function LeadCaptureForm() {
   }
 
   return (
-    <section className="bg-gray-900 py-24">
+    <section className="bg-slate-950 py-24">
       <div className="mx-auto max-w-2xl px-6 text-center">
         <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
           Request Early Access
         </h2>
-        <p className="mt-4 text-lg leading-8 text-gray-300">
+        <p className="mt-4 text-lg leading-8 text-slate-300">
           Be among the first to try Tender Engine. We're launching soon.
         </p>
         <form onSubmit={handleSubmit} className="mt-10 mx-auto max-w-md space-y-4">
@@ -83,7 +83,7 @@ export default function LeadCaptureForm() {
               required
               value={formData.name}
               onChange={handleChange}
-              className="block w-full rounded-md border-0 bg-white/10 px-4 py-2.5 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 text-sm"
+              className="block w-full rounded-md border-0 bg-white/10 px-4 py-2.5 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 text-sm"
             />
           </div>
           <div>
@@ -94,7 +94,7 @@ export default function LeadCaptureForm() {
               required
               value={formData.email}
               onChange={handleChange}
-              className="block w-full rounded-md border-0 bg-white/10 px-4 py-2.5 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 text-sm"
+              className="block w-full rounded-md border-0 bg-white/10 px-4 py-2.5 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 text-sm"
             />
           </div>
           <div>
@@ -104,7 +104,7 @@ export default function LeadCaptureForm() {
               placeholder="Company"
               value={formData.company}
               onChange={handleChange}
-              className="block w-full rounded-md border-0 bg-white/10 px-4 py-2.5 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 text-sm"
+              className="block w-full rounded-md border-0 bg-white/10 px-4 py-2.5 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 text-sm"
             />
           </div>
           <div>
@@ -114,7 +114,7 @@ export default function LeadCaptureForm() {
               placeholder="Role / Title"
               value={formData.role}
               onChange={handleChange}
-              className="block w-full rounded-md border-0 bg-white/10 px-4 py-2.5 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 text-sm"
+              className="block w-full rounded-md border-0 bg-white/10 px-4 py-2.5 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-500 text-sm"
             />
           </div>
           {status === 'error' && (
@@ -123,7 +123,7 @@ export default function LeadCaptureForm() {
           <button
             type="submit"
             disabled={status === 'submitting'}
-            className="w-full rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 transition-colors"
+            className="w-full rounded-md bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:opacity-50 transition-colors"
           >
             {status === 'submitting' ? 'Submitting...' : 'Request Access'}
           </button>
