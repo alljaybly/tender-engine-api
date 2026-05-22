@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 
 interface LeadFormData {
   name: string;
@@ -37,7 +38,7 @@ export default function LeadCaptureForm() {
 
       if (res.ok) {
         setStatus('success');
-        setMessage('Thank you — we\'ll contact you soon.');
+        setMessage('Thank you - we\'ll contact you soon.');
         setFormData({ name: '', email: '', company: '', role: '' });
       } else {
         const data = await res.json();
@@ -55,7 +56,7 @@ export default function LeadCaptureForm() {
       <section className="bg-blue-600 py-24">
         <div className="mx-auto max-w-2xl text-center px-6">
           <div className="rounded-xl bg-white/10 p-8 backdrop-blur-sm">
-            <div className="text-4xl mb-4">✅</div>
+            <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-emerald-300" />
             <h2 className="text-2xl font-bold text-white">{message}</h2>
             <p className="mt-2 text-blue-100">We'll be in touch with early access information.</p>
           </div>

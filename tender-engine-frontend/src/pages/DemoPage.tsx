@@ -32,6 +32,7 @@ import { SAMPLE_TENDERS, demoSimEngine } from '../demo/demoEngine';
 import type { SampleTender } from '../demo/demoEngine';
 import DemoProcessingAnimation from '../components/demo/DemoProcessingAnimation';
 import AppFooter from '../components/layout/AppFooter';
+import PublicHeader from '../components/layout/PublicHeader';
 
 type ViewMode = 'executive' | 'technical';
 type DemoPhase = 'welcome' | 'processing' | 'result';
@@ -266,43 +267,9 @@ export default function DemoPage() {
     setViewMode('executive');
   }, []);
 
-  const headerAction = phase === 'result' ? (
-    <button
-      onClick={handleReset}
-      className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
-    >
-      <RefreshCw className="h-4 w-4" />
-      Try another
-    </button>
-  ) : (
-    <button
-      onClick={() => navigate('/register')}
-      className="inline-flex items-center gap-2 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800"
-    >
-      Create account
-      <ArrowRight className="h-4 w-4" />
-    </button>
-  );
-
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <button onClick={() => navigate('/')} className="flex items-center gap-3 text-left">
-            <img src="/images/logo.png" alt="Tender Engine" className="h-8 w-auto" />
-            <span className="hidden sm:block">
-              <span className="block text-sm font-bold text-slate-950">Tender Engine</span>
-              <span className="block text-xs font-medium text-slate-500">Interactive demo</span>
-            </span>
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="hidden rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200 sm:inline-flex">
-              No login required
-            </span>
-            {headerAction}
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       <div className="border-b border-amber-200 bg-amber-50">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm text-amber-900 sm:px-6 lg:px-8">

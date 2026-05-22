@@ -1,4 +1,16 @@
 import { useNavigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  CheckCircle2,
+  FileSearch,
+  Play,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
 import HeroSection from '../components/landing/HeroSection';
 import FeatureGrid from '../components/landing/FeatureGrid';
 import HowItWorks from '../components/landing/HowItWorks';
@@ -7,78 +19,64 @@ import CTASection from '../components/landing/CTASection';
 import LeadCaptureForm from '../components/landing/LeadCaptureForm';
 import AppFooter from '../components/layout/AppFooter';
 import BetaBanner from '../components/layout/BetaBanner';
+import PublicHeader from '../components/layout/PublicHeader';
+
+const demoSignals = [
+  'Choose from sample tenders or upload a PDF locally',
+  'Watch the simulated extraction pipeline run stage by stage',
+  'Inspect BOQ lines, pricing, warnings, failed stages, and confidence scores',
+];
+
+const pricingItems = [
+  {
+    name: 'Early Beta',
+    price: 'Free',
+    description: 'For contractors and procurement teams evaluating Tender Engine during beta.',
+    features: ['Interactive demo access', 'Free account creation', 'Limited live processing during beta', 'Feedback-led product improvements'],
+  },
+  {
+    name: 'Pilot Teams',
+    price: 'Contact us',
+    description: 'For companies and public offices that want a guided tender-processing pilot.',
+    features: ['Pilot onboarding', 'Tender workflow review', 'Procurement health checks', 'Export and reporting support'],
+  },
+];
 
 export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Beta Warning Banner */}
       <BetaBanner />
+      <PublicHeader />
 
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <div className="flex items-center gap-3">
-            <img
-              src="/images/logo.png"
-              alt="Tender Engine"
-              className="h-9 w-auto"
-            />
-            <span className="text-lg font-semibold text-gray-900">Tender Engine</span>
-          </div>
-          <div className="hidden sm:flex items-center gap-6">
-            <button
-              onClick={() => navigate('/demo')}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Demo
-            </button>
-            <button
-              onClick={() => navigate('/for-procurement')}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              For Government
-            </button>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/login')}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Login
-            </button>
-            <button
-              onClick={() => navigate('/register')}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors"
-            >
-              Register
-            </button>
-          </div>
-        </nav>
-      </header>
-
-      {/* Hero */}
       <HeroSection
         onTryDemo={() => navigate('/demo')}
         onGetStarted={() => navigate('/register')}
       />
 
-      {/* Screenshot / Preview Section */}
-      <section className="bg-gray-50 py-24">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            See Tender Engine in Action
-          </h2>
-          <div className="mt-16 space-y-24">
+      <DemoTeaser onTryDemo={() => navigate('/demo')} />
+
+      <section className="bg-slate-50 py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-bold uppercase tracking-wide text-blue-700">Product Preview</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Clear extraction results your team can actually review.
+            </h2>
+            <p className="mt-4 text-lg leading-8 text-slate-600">
+              Tender Engine is designed to show useful automation and its limits in the same view.
+            </p>
+          </div>
+          <div className="mt-14 space-y-20">
             <ScreenshotCard
               title="Executive Dashboard"
-              description="View a clear, confidence-scored breakdown of every tender extraction. See completed stages, warnings, and failed items at a glance."
+              description="View a confidence-scored breakdown of every tender extraction. Completed stages, warnings, and failed items stay visible."
               imageSrc="/images/executive-dashboard.png"
             />
             <ScreenshotCard
               title="Detailed BOQ & Pricing"
-              description="Extracted BOQ items with rates, amounts, and full pricing breakdown — all with transparent confidence scores for every data point."
+              description="Review extracted BOQ items with rates, amounts, pricing additions, and the evidence needed for estimator review."
               imageSrc="/images/boq-pricing-extract.png"
               align="right"
             />
@@ -86,85 +84,195 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How It Works */}
       <HowItWorks />
-
-      {/* Differentiator / Trust Section */}
-      <section className="bg-gray-50 py-24">
-        <div className="mx-auto max-w-3xl px-6 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            Transparency Is Built In
-          </h2>
-          <p className="mt-4 text-lg leading-8 text-gray-600">
-            Unlike black-box automation systems, failed stages and uncertainty remain visible.
-            Every extraction includes a confidence score so you know exactly how reliable the results are.
-          </p>
-          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3 text-left">
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="text-2xl mb-3">🔍</div>
-              <h3 className="text-sm font-semibold text-gray-900">Honest Confidence Scoring</h3>
-              <p className="mt-1 text-xs text-gray-600">Every stage reports its confidence — no inflated scores.</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="text-2xl mb-3">⚠️</div>
-              <h3 className="text-sm font-semibold text-gray-900">Partial-Success Visibility</h3>
-              <p className="mt-1 text-xs text-gray-600">Completed stages, warnings, and failures are all clearly shown.</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="text-2xl mb-3">🔄</div>
-              <h3 className="text-sm font-semibold text-gray-900">Retry Architecture</h3>
-              <p className="mt-1 text-xs text-gray-600">Retry only the stages that failed — not the entire document.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Procurement Section */}
-      <section className="bg-white py-24">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-xs font-semibold text-blue-700 mb-6">
-              For Government & SOEs
-            </div>
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Help Procurement Offices Create{' '}
-              <span className="text-blue-600">Clearer Tenders</span>
-            </h2>
-            <p className="mt-4 text-lg leading-8 text-gray-600">
-              Upload draft tenders and get an AI-powered{' '}
-              <span className="font-semibold text-gray-900">Tender Health Report</span>{' '}
-              that flags ambiguous BOQ items, unclear specifications, and risky clauses — before you publish.
-              Free pilot programs available for government departments and SOEs.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
-                onClick={() => navigate('/for-procurement')}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-all hover:shadow-md active:scale-[0.98]"
-              >
-                Learn More
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Feature Grid */}
       <FeatureGrid />
 
-      {/* CTA */}
+      <section className="bg-white py-20 sm:py-24">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(360px,1.05fr)] lg:items-center lg:px-8">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-blue-700">For Procurement Offices</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Publish clearer tenders before suppliers ever see them.
+            </h2>
+            <p className="mt-4 text-lg leading-8 text-slate-600">
+              Procurement teams can use Tender Engine to review draft tender packs, spot ambiguous BOQ items, and reduce clarification cycles before publication.
+            </p>
+            <div className="mt-6 grid gap-3">
+              <ValuePoint icon={<Building2 className="h-5 w-5" />} text="Tender Health Reports for draft documents" />
+              <ValuePoint icon={<AlertTriangle className="h-5 w-5" />} text="Flags for unclear specifications, missing quantities, and risk areas" />
+              <ValuePoint icon={<ShieldCheck className="h-5 w-5" />} text="Visible confidence scoring for governance and review" />
+            </div>
+            <button
+              onClick={() => navigate('/for-procurement')}
+              className="mt-8 inline-flex items-center gap-2 rounded-md bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+            >
+              Learn about procurement pilots
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-5 shadow-sm">
+            <div className="rounded-md bg-white p-5 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Tender health example</p>
+              <h3 className="mt-2 text-lg font-bold text-slate-950">Before publication review</h3>
+              <div className="mt-5 space-y-3">
+                <RiskRow label="Ambiguous BOQ descriptions" value="4 found" tone="amber" />
+                <RiskRow label="Missing unit rates" value="2 found" tone="red" />
+                <RiskRow label="Schedule clarity" value="High" tone="green" />
+                <RiskRow label="Overall readiness" value="78%" tone="amber" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <PricingSection onGetStarted={() => navigate('/register')} />
+
+      <section className="bg-slate-50 py-20 sm:py-24">
+        <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+          <p className="text-sm font-bold uppercase tracking-wide text-blue-700">Trust by design</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            Honesty Architecture is the product philosophy.
+          </h2>
+          <p className="mt-4 text-lg leading-8 text-slate-600">
+            Tender Engine should help you move faster without encouraging blind trust. That is why uncertainty, warnings, failed stages, and confidence scores are treated as first-class output.
+          </p>
+          <div className="mt-10 grid gap-4 text-left sm:grid-cols-3">
+            <TrustCard title="Confidence scores" text="Every major extraction stage reports reliability in plain view." />
+            <TrustCard title="Partial success" text="Useful results can still be shown when one stage needs review." />
+            <TrustCard title="Human review" text="Warnings point people toward the parts that deserve attention." />
+          </div>
+        </div>
+      </section>
+
       <CTASection
         onGetStarted={() => navigate('/register')}
         onTryDemo={() => navigate('/demo')}
       />
 
-      {/* Lead Capture */}
       <LeadCaptureForm />
-
-      {/* Footer */}
       <AppFooter />
+    </div>
+  );
+}
+
+function DemoTeaser({ onTryDemo }: { onTryDemo: () => void }) {
+  return (
+    <section className="border-y border-slate-200 bg-white py-16">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center lg:px-8">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-wide text-blue-700">Interactive demo</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            Try the product flow without logging in.
+          </h2>
+          <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+            The demo is intentionally transparent: it uses pre-generated sample results for speed, shows realistic processing stages, and explains exactly what is simulated.
+          </p>
+          <div className="mt-6 grid gap-3">
+            {demoSignals.map((signal) => (
+              <ValuePoint key={signal} icon={<CheckCircle2 className="h-5 w-5" />} text={signal} />
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
+          <Sparkles className="h-6 w-6 text-blue-300" />
+          <h3 className="mt-4 text-xl font-bold">Best first step</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Visitors can see value immediately by processing a sample tender, then sign up when they are ready to run private documents.
+          </p>
+          <button
+            onClick={onTryDemo}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-white px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-blue-50"
+          >
+            <Play className="h-4 w-4" />
+            Try Live Demo
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PricingSection({ onGetStarted }: { onGetStarted: () => void }) {
+  return (
+    <section id="pricing" className="bg-slate-950 py-20 text-white sm:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-sm font-bold uppercase tracking-wide text-blue-300">Pricing</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+            Free during early beta, with guided pilots available.
+          </h2>
+          <p className="mt-4 text-lg leading-8 text-slate-300">
+            Start with the public demo, create an account for live processing, or contact us for a structured team pilot.
+          </p>
+        </div>
+        <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-2">
+          {pricingItems.map((item) => (
+            <div key={item.name} className="rounded-lg border border-slate-700 bg-white/5 p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white">{item.name}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">{item.description}</p>
+                </div>
+                <span className="rounded-md bg-blue-500/20 px-3 py-1 text-sm font-bold text-blue-200">{item.price}</span>
+              </div>
+              <div className="mt-6 grid gap-3">
+                {item.features.map((feature) => (
+                  <div key={feature} className="flex items-start gap-2 text-sm text-slate-200">
+                    <BadgeCheck className="mt-0.5 h-4 w-4 flex-none text-emerald-300" />
+                    {feature}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-10 text-center">
+          <button
+            onClick={onGetStarted}
+            className="inline-flex items-center gap-2 rounded-md bg-white px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-blue-50"
+          >
+            Create Free Account
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ValuePoint({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-md bg-blue-50 text-blue-700">
+        {icon}
+      </div>
+      <p className="text-sm font-semibold leading-6 text-slate-700">{text}</p>
+    </div>
+  );
+}
+
+function RiskRow({ label, value, tone }: { label: string; value: string; tone: 'green' | 'amber' | 'red' }) {
+  const classes = {
+    green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+    amber: 'bg-amber-50 text-amber-700 ring-amber-200',
+    red: 'bg-red-50 text-red-700 ring-red-200',
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-white px-4 py-3">
+      <span className="text-sm font-semibold text-slate-700">{label}</span>
+      <span className={`rounded-md px-2.5 py-1 text-xs font-bold ring-1 ${classes[tone]}`}>{value}</span>
+    </div>
+  );
+}
+
+function TrustCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <FileSearch className="h-5 w-5 text-blue-700" />
+      <h3 className="mt-4 text-base font-bold text-slate-950">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
     </div>
   );
 }

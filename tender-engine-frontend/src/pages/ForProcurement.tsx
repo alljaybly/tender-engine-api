@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import AppFooter from '../components/layout/AppFooter';
+import PublicHeader from '../components/layout/PublicHeader';
 
 const BENEFITS = [
   {
@@ -79,34 +80,7 @@ export default function ForProcurement() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* ── Navigation Bar ─────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <button onClick={() => navigate('/')} className="flex items-center gap-3">
-            <img src="/images/logo.png" alt="Tender Engine" className="h-9 w-auto" />
-            <span className="text-lg font-semibold text-gray-900">Tender Engine</span>
-          </button>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/demo')}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Demo
-            </button>
-            <button
-              onClick={() => navigate('/login')}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Login
-            </button>
-            <button
-              onClick={() => navigate('/register')}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
-            >
-              Register
-            </button>
-          </div>
-        </nav>
-      </header>
+      <PublicHeader />
 
       {/* ── Hero / Headline ────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/80 to-white">
