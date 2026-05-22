@@ -21,31 +21,31 @@ export default function HeroSection({ onTryDemo, onGetStarted }: HeroSectionProp
             <ShieldCheck className="h-4 w-4" />
             Built for South African tenders
           </div>
-          <h1 className="mt-6 max-w-4xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
-            Turn tender PDFs into priced BOQs, summaries, and review signals.
+          <h1 className="mt-6 max-w-4xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl leading-[1.1]">
+            Turn tender PDFs into priced BOQs, clear summaries, and actionable review signals.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            Tender Engine helps contractors and procurement teams understand complex tender documents faster, with visible confidence scores and warnings so every result can be reviewed responsibly.
+            Upload a tender document and get a confidence-scored extraction — BOQ lines, pricing, sector, duration, workforce, and warnings — all in one view, ready for human review.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <button
               onClick={onTryDemo}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-700 px-6 py-3.5 text-base font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-md"
+              className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-blue-700 px-8 py-4 text-base font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-xl active:scale-[0.98]"
             >
               <Play className="h-5 w-5" />
-              Try Live Demo
+              Try Live Demo — No Signup
             </button>
             <button
               onClick={onGetStarted}
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-6 py-3.5 text-base font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-7 py-4 text-base font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 active:scale-[0.98]"
             >
               Create Free Account
               <ArrowRight className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          <div className="mt-10 grid gap-3 sm:grid-cols-3">
             {proofPoints.map((point) => (
               <div key={point} className="flex items-start gap-2 rounded-md border border-slate-200 bg-white p-3 shadow-sm">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none text-emerald-600" />
