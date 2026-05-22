@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './routes/ProtectedRoute';
+import BackToTop from './components/layout/BackToTop';
 import NotFound from './pages/NotFound';
 
 const Login = lazy(() => import('./pages/Login'));
@@ -80,6 +81,8 @@ function App() {
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          {/* Floating back-to-top button — visible on all pages */}
+          <BackToTop />
         </Suspense>
       </AuthProvider>
     </BrowserRouter>
