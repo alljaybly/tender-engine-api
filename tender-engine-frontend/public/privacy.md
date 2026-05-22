@@ -206,8 +206,9 @@ The "Last updated" date at the top of this policy indicates when it was last rev
 
 For questions about this Privacy Policy, to exercise your rights under POPIA, or to raise any privacy concerns, please contact us at:
 
-**Email:** privacy@tenderengine.ai  
-**Address:** South Africa
+**Email:** tenderengine@zohomail.com  
+**Website:** https://tender-engine-api.netlify.app  
+**Address:** 12 Claasens Street, Bishop Lavis, Western Cape, Cape Town, 7490, South Africa
 
 ### Information Regulator (South Africa)
 You have the right to lodge a complaint with the Information Regulator if you believe we have violated your rights under POPIA:

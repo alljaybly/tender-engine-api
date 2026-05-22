@@ -171,8 +171,9 @@ These Terms shall be governed by and construed in accordance with the laws of th
 
 For questions about these Terms, please contact us at:
 
-**Email:** legal@tenderengine.ai  
-**Address:** South Africa
+**Email:** tenderengine@zohomail.com  
+**Website:** https://tender-engine-api.netlify.app  
+**Address:** 12 Claasens Street, Bishop Lavis, Western Cape, Cape Town, 7490, South Africa
 
 ---
 

@@ -261,12 +261,12 @@ export default function ForProcurement() {
                 </svg>
                 Start Free Pilot
               </button>
-              <button
-                onClick={() => navigate('/contact')}
+              <a
+                href="mailto:tenderengine@zohomail.com"
                 className="inline-flex items-center gap-2 rounded-xl border border-blue-400 px-8 py-4 text-base font-semibold text-white hover:bg-blue-500 transition-all hover:shadow-lg active:scale-[0.98]"
               >
                 Contact Our Team
-              </button>
+              </a>
             </div>
             <p className="mt-4 text-xs text-blue-200">
               No credit card required. Strict confidentiality guaranteed.

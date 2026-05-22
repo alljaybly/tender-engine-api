@@ -15,22 +15,24 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 /**
  * Maximum number of retries for auth restoration on mount.
- * This handles Render cold starts where the backend takes ~30s to wake up.
- * We retry with backoff instead of immediately clearing the token.
+ * Handles Render cold starts where the backend can take 35-40s to wake up.
+ * With 4 retries and exponential backoff, we wait approximately:
+ *   3s + 6s + 12s + 24s = ~45s before giving up — enough for a cold start.
  */
-const MAX_AUTH_RETRIES = 3;
+const MAX_AUTH_RETRIES = 4;
 
 /**
  * Base delay in ms between auth restoration retries.
- * Actual delay = BASE_RETRY_DELAY * (attempt ^ 2) — exponential backoff.
+ * Actual delay = BASE_RETRY_DELAY * (2 ^ attempt) — exponential backoff.
+ * Sequence:  3s, 6s, 12s, 24s
  */
-const BASE_RETRY_DELAY = 2000;
+const BASE_RETRY_DELAY = 3000;
 
 /**
  * Wait this long before the first auth/me call after detecting a valid stored token.
  * This gives the Render backend a head start to wake up before we even try.
  */
-const INITIAL_DEFER_MS = 1500;
+const INITIAL_DEFER_MS = 3000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -107,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           // For network errors (cold start) or server errors, retry
           if ((isNetworkError || isServerError) && attempt < MAX_AUTH_RETRIES) {
-            const delay = BASE_RETRY_DELAY * ((attempt + 1) ** 2);
+            const delay = BASE_RETRY_DELAY * (2 ** attempt);
             console.log(
               `[AuthContext] Auth restoration attempt ${attempt + 1}/${MAX_AUTH_RETRIES} failed ` +
               `(status=${err instanceof ApiRequestError ? err.status : 'unknown'}) — ` +
