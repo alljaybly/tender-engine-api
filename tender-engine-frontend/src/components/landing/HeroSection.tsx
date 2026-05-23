@@ -22,16 +22,16 @@ export default function HeroSection({ onTryDemo, onGetStarted }: HeroSectionProp
             Built for South African tenders
           </div>
           <h1 className="mt-6 max-w-4xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl leading-[1.1]">
-            Turn tender PDFs into priced BOQs, clear summaries, and actionable review signals.
+            Turn tender PDFs into priced BOQs you can trust, not guess from.
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            Upload a tender document and get a confidence-scored extraction — BOQ lines, pricing, sector, duration, workforce, and warnings — all in one view, ready for human review.
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+            Upload a tender document and get a confidence-scored extraction of BOQ lines, pricing, sector, and review signals — all in one view, ready for your team.
           </p>
 
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <button
               onClick={onTryDemo}
-              className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-blue-700 px-8 py-4 text-base font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-xl active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-8 py-4 text-base font-bold text-white shadow-lg ring-1 ring-blue-400/30 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-blue-700 hover:shadow-xl active:scale-[0.98]"
             >
               <Play className="h-5 w-5" />
               Try Live Demo — No Signup
