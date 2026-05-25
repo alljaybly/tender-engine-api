@@ -8,7 +8,6 @@ downloads/
 *.log
 .idea/
 .vscode/
-.vscode
 tender_engine.db
 *.db
 .wdm/
@@ -22,8 +21,13 @@ package/
 *.pyd
 .Python
 ENV/
-# Docker
-.dockerignore
-Dockerfile
-docker-compose.yml
+
+# Big files
+large.txt
+fake.pdf
 *.tmp
+
+# Keep these for deployment
+!.dockerignore
+!Dockerfile
+!docker-compose.yml
