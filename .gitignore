@@ -16,3 +16,4 @@ temp_downloads/
 storage/
 node_modules/
 dist/
+lambda_package.zip
