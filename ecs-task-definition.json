@@ -1,0 +1,100 @@
+{
+  "family": "tender-engine-api",
+  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskRole",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "2048",
+  "memory": "4096",
+  "ephemeralStorage": {
+    "size": 21
+  },
+  "containerDefinitions": [
+    {
+      "name": "tender-engine-api",
+      "image": "YOUR_ACCOUNT_ID.dkr.ecr.af-south-1.amazonaws.com/tender-engine-api:latest",
+      "essential": true,
+      "readonlyRootFilesystem": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "JWT_ALGORITHM", "value": "HS256" },
+        { "name": "JWT_EXPIRE_MINUTES", "value": "1440" },
+        { "name": "CORS_ORIGINS", "value": "*" },
+        { "name": "PYTHONWARNINGS", "value": "ignore" }
+      ],
+      "secrets": [
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:af-south-1:YOUR_ACCOUNT_ID:parameter/tender-engine/SECRET_KEY"
+        },
+        {
+          "name": "PAYFAST_MERCHANT_ID",
+          "valueFrom": "arn:aws:ssm:af-south-1:YOUR_ACCOUNT_ID:parameter/tender-engine/PAYFAST_MERCHANT_ID"
+        },
+        {
+          "name": "PAYFAST_MERCHANT_KEY",
+          "valueFrom": "arn:aws:ssm:af-south-1:YOUR_ACCOUNT_ID:parameter/tender-engine/PAYFAST_MERCHANT_KEY"
+        },
+        {
+          "name": "TENDER_API_KEY",
+          "valueFrom": "arn:aws:ssm:af-south-1:YOUR_ACCOUNT_ID:parameter/tender-engine/TENDER_API_KEY"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/tender-engine-api",
+          "awslogs-region": "af-south-1",
+          "awslogs-stream-prefix": "ecs",
+          "awslogs-create-group": "true"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"],
+        "interval": 30,
+        "timeout": 10,
+        "startPeriod": 15,
+        "retries": 3
+      },
+      "ulimits": [
+        {
+          "name": "nofile",
+          "softLimit": 65536,
+          "hardLimit": 65536
+        }
+      ],
+      "systemControls": [
+        {
+          "namespace": "net.core.somaxconn",
+          "value": "1024"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "data",
+          "containerPath": "/app/data",
+          "readOnly": false
+        }
+      ]
+    }
+  ],
+  "volumes": [
+    {
+      "name": "data",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "fs-YOUR_EFS_FILESYSTEM_ID",
+        "rootDirectory": "/tender-engine-data",
+        "transitEncryption": "ENABLED",
+        "authorizationConfig": {
+          "accessPointId": "fsap-YOUR_EFS_ACCESS_POINT_ID"
+        }
+      }
+    }
+  ]
+}

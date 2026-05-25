@@ -17,3 +17,13 @@ storage/
 node_modules/
 dist/
 lambda_package.zip
+package/
+*.pyo
+*.pyd
+.Python
+ENV/
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+*.tmp
