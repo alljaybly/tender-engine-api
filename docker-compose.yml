@@ -1,15 +1,14 @@
 # ============================================================
 # docker-compose.yml — Local development & testing
-#   Use this to run the API locally during development.
-#   For PRODUCTION deployment on AWS ECS Fargate, see
-#   ecs-task-definition.json and DEPLOY_TO_ECS.md.
+# Use this to run the API locally during development.
 #
 # Usage:
-#   docker compose up -d                # Start in background
-#   docker compose up -d --build        # Rebuild and start
-#   docker compose down                 # Stop and remove container
-#   docker compose logs -f              # Follow logs
+# docker compose up -d          # Start in background
+# docker compose up -d --build  # Rebuild and start
+# docker compose down           # Stop and remove container
+# docker compose logs -f        # Follow logs
 # ============================================================
+
 version: "3.9"
 
 services:
@@ -32,12 +31,3 @@ services:
       timeout: 10s
       start_period: 15s
       retries: 3
-    # Resource limits prevent the container from hogging your laptop
-    deploy:
-      resources:
-        limits:
-          cpus: "2.0"
-          memory: "4G"
-        reservations:
-          cpus: "0.5"
-          memory: "1G"
