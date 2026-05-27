@@ -25,7 +25,7 @@ COPY requirements.cpu.txt /tmp/requirements.txt
 
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
 # ============================================================
