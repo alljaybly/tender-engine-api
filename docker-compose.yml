@@ -22,7 +22,6 @@ services:
     env_file:
       - .env
     volumes:
-      # Mount local data folder so the SQLite DB persists across restarts
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
