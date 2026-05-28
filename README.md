@@ -7,6 +7,7 @@
 AI-powered tender extraction, BOQ intelligence, pricing analysis, and executive reporting.
 </p>
 # Tender Engine AI
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Transform tender documents into structured pricing intelligence.**
 
