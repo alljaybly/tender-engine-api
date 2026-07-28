@@ -63,12 +63,16 @@ async def _get_pg_pool():
 # ── SQL translation helpers ───────────────────────────────────────────
 
 def _compile_placeholders(sql: str, args: tuple) -> str:
-    """Convert ? placeholders to $1, $2, ... for PostgreSQL."""
+    """Convert ? placeholders to $1, $2, ... for PostgreSQL.
+
+    Placeholders are numbered left-to-right so that args[i] maps to the
+    (i+1)-th placeholder ($1 = args[0]), matching the positional binding
+    used by both psycopg2 and asyncpg.
+    """
     if not USE_POSTGRES:
         return sql
-    count = sql.count("?")
     result = sql
-    for i in range(count, 0, -1):
+    for i, _ in enumerate(args, start=1):
         result = result.replace("?", f"${i}", 1)
     return result
 
@@ -883,9 +887,11 @@ class _AsyncPgPoolConnection:
         conn = await self._pool.acquire()
         try:
             if params:
-                # Convert ? to $1, $2, ...
+                # Convert ? to $1, $2, ... left-to-right so params[i] maps
+                # to the (i+1)-th placeholder in the SQL, matching how
+                # asyncpg binds positional arguments ($1 = args[0]).
                 converted = sql
-                for i in range(len(params), 0, -1):
+                for i, _ in enumerate(params, start=1):
                     converted = converted.replace("?", f"${i}", 1)
                 stmt = await conn.prepare(converted)
                 result = await stmt.fetch(*params)
