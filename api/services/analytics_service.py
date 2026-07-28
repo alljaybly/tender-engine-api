@@ -9,12 +9,11 @@ from __future__ import annotations
 import csv
 import io
 import json
-import sqlite3
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
-from .database import DB_PATH, get_db, close_db
+from .database import DB_PATH, get_db, close_db, _get_connection, USE_POSTGRES
 from .tender_readiness_service import build_readiness_report
 
 
@@ -102,10 +101,72 @@ TRACKED_FIELDS = {
 
 
 def init_analytics_schema_sync() -> None:
-    conn = sqlite3.connect(DB_PATH)
+    conn = _get_connection()
     try:
         cursor = conn.cursor()
-        cursor.executescript(ANALYTICS_TABLE_DDL)
+        if USE_POSTGRES:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS platform_analytics (
+                    id SERIAL PRIMARY KEY,
+                    job_id TEXT UNIQUE NOT NULL REFERENCES tenders(job_id),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    processing_duration_ms INTEGER,
+                    upload_size_bytes INTEGER,
+                    page_count INTEGER,
+                    ocr_used INTEGER,
+                    ocr_page_count INTEGER,
+                    document_language TEXT,
+                    detected_jurisdiction TEXT,
+                    tender_type TEXT,
+                    procurement_method TEXT,
+                    detected_currency TEXT,
+                    currencies_detected_json TEXT,
+                    employer_detected INTEGER,
+                    tender_number_detected INTEGER,
+                    closing_date_detected INTEGER,
+                    boq_detected INTEGER,
+                    boq_item_count INTEGER,
+                    work_categories_detected_json TEXT,
+                    pricing_executed INTEGER,
+                    readiness_score REAL,
+                    submission_package_generated INTEGER,
+                    completion_guide_generated INTEGER,
+                    processing_status TEXT,
+                    warnings_count INTEGER,
+                    errors_count INTEGER,
+                    upload_time_ms INTEGER,
+                    validation_time_ms INTEGER,
+                    ocr_duration_ms INTEGER,
+                    text_extraction_duration_ms INTEGER,
+                    entity_extraction_duration_ms INTEGER,
+                    boq_duration_ms INTEGER,
+                    pricing_duration_ms INTEGER,
+                    report_generation_duration_ms INTEGER,
+                    zip_package_generation_duration_ms INTEGER,
+                    total_processing_time_ms INTEGER,
+                    average_page_processing_time_ms REAL,
+                    is_scanned INTEGER,
+                    is_digital INTEGER,
+                    contains_boq INTEGER,
+                    contains_drawings INTEGER,
+                    contains_tables INTEGER,
+                    contains_appendices INTEGER,
+                    contains_pricing_schedules INTEGER,
+                    contains_forms INTEGER,
+                    contains_signatures INTEGER,
+                    contains_evaluation_criteria INTEGER,
+                    contains_mandatory_documentation INTEGER,
+                    extraction_quality_json TEXT,
+                    document_characteristics_json TEXT,
+                    raw_metrics_json TEXT
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_platform_analytics_job_id ON platform_analytics(job_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_platform_analytics_completed_at ON platform_analytics(completed_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_platform_analytics_status ON platform_analytics(processing_status)")
+        else:
+            cursor.executescript(ANALYTICS_TABLE_DDL)
         conn.commit()
     finally:
         conn.close()
@@ -391,10 +452,18 @@ async def store_platform_analytics(job_id: str, result_data: Dict[str, Any]) -> 
     try:
         columns = list(record.keys())
         placeholders = ", ".join(["?"] * len(columns))
-        await db.execute(
-            f"INSERT OR REPLACE INTO platform_analytics ({', '.join(columns)}) VALUES ({placeholders})",
-            tuple(record[column] for column in columns),
-        )
+        if USE_POSTGRES:
+            update_assignments = ", ".join(f"{col} = EXCLUDED.{col}" for col in columns if col != "job_id")
+            await db.execute(
+                f"INSERT INTO platform_analytics ({', '.join(columns)}) VALUES ({placeholders}) "
+                f"ON CONFLICT (job_id) DO UPDATE SET {update_assignments}",
+                tuple(record[column] for column in columns),
+            )
+        else:
+            await db.execute(
+                f"INSERT OR REPLACE INTO platform_analytics ({', '.join(columns)}) VALUES ({placeholders})",
+                tuple(record[column] for column in columns),
+            )
         await db.commit()
     finally:
         await close_db(db)
