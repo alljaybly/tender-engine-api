@@ -146,7 +146,7 @@ async def register(
         cursor = await db.execute(
             """
             INSERT INTO users (email, hashed_password, full_name, company_name, role, email_verified, plan)
-            VALUES (?, ?, ?, ?, 'customer', 1, 'free')
+            VALUES (?, ?, ?, ?, 'customer', True, 'free')
             """,
             (payload.email.strip(), hashed, payload.full_name.strip(), payload.company_name.strip()),
         )
