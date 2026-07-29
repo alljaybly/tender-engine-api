@@ -185,7 +185,7 @@ async def register(
                 hash_refresh_token(refresh_token),
                 user_agent_value,
                 ip_address,
-                1 if remember_me else 0,
+                remember_me,
                 session_expiry(remember_me).isoformat(),
             ),
         )
@@ -292,7 +292,7 @@ async def login(
                 hash_refresh_token(refresh_token),
                 user_agent_value,
                 ip_address,
-                1 if remember_me else 0,
+                remember_me,
                 session_expiry(remember_me).isoformat(),
             ),
         )
