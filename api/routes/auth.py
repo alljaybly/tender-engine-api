@@ -30,7 +30,7 @@ from ..services.auth import (
     session_expiry,
     utcnow,
 )
-from ..services.database import close_db, get_db
+from ..services.database import USE_POSTGRES, close_db, get_db
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
@@ -143,15 +143,28 @@ async def register(
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists")
 
         hashed = hash_password(payload.password)
-        cursor = await db.execute(
-            """
-            INSERT INTO users (email, hashed_password, full_name, company_name, role, email_verified, plan)
-            VALUES (?, ?, ?, ?, 'customer', True, 'free')
-            """,
-            (payload.email.strip(), hashed, payload.full_name.strip(), payload.company_name.strip()),
-        )
-        await db.commit()
-        user_id = int(cursor.lastrowid)
+        if USE_POSTGRES:
+            cursor = await db.execute(
+                """
+                INSERT INTO users (email, hashed_password, full_name, company_name, role, email_verified, plan)
+                VALUES (?, ?, ?, ?, 'customer', True, 'free')
+                RETURNING id
+                """,
+                (payload.email.strip(), hashed, payload.full_name.strip(), payload.company_name.strip()),
+            )
+            await db.commit()
+            row = await cursor.fetchone()
+            user_id = row["id"]
+        else:
+            cursor = await db.execute(
+                """
+                INSERT INTO users (email, hashed_password, full_name, company_name, role, email_verified, plan)
+                VALUES (?, ?, ?, ?, 'customer', True, 'free')
+                """,
+                (payload.email.strip(), hashed, payload.full_name.strip(), payload.company_name.strip()),
+            )
+            await db.commit()
+            user_id = int(cursor.lastrowid)
 
         session_id = generate_session_id()
         remember_me = True
